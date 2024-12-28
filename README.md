@@ -1,13 +1,16 @@
 # qswagger
 Typescript request generator for swagger
 
+## installation
+Download `qswagger.exe` from https://github.com/Patrolin/qswagger/releases
+
 ## usage
-Generate api
+Generate apis and models
 ```
 ./qswagger.exe <url>.json
 ```
 
-Generate api from multiple modules
+Generate apis and models from multiple modules
 ```
 ./qswagger.exe <url1>.json <url2>.json
 ```
