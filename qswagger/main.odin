@@ -6,6 +6,7 @@ import "core:os"
 import "core:strings"
 
 OUT_DIR :: "fetch/"
+
 main :: proc() {
 	if len(os.args) < 2 {
 		fmt.println("Usage: qswagger <...urls>")
@@ -26,6 +27,11 @@ main :: proc() {
 		apis := parse_apis(data, module)
 		//fmt.printfln("acc_apis: %v", acc_apis)
 		os.make_directory(OUT_DIR)
+		swagger_runtime := print_swagger_runtime()
+		os.write_entire_file(
+			strings.join({OUT_DIR, "runtime.ts"}, ""),
+			transmute([]u8)swagger_runtime,
+		)
 		os.make_directory(strings.join({OUT_DIR, "model"}, ""))
 		os.make_directory(strings.join({OUT_DIR, "api"}, ""))
 		for name, model in models {
