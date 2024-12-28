@@ -1,0 +1,8 @@
+        const headers: runtime.HTTPHeaders = {};
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("Bearer", []);
+            if (tokenString) {
+                headers["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }

@@ -231,6 +231,7 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 		raw_response_type_string := ": Promise<Response>"
 		response_type_string :=
 			len(request.response_type) > 0 ? strings.join({": Promise<", request.response_type, ">"}, "") : ""
+		// raw request
 		fmt.sbprintfln(
 			&builder,
 			"    async %v_Raw(%v)%v {{",
@@ -247,10 +248,14 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 				param.name,
 			)
 		}
+		fmt.sbprint(&builder, AUTH_PREAMBLE)
+		if request.type != .Get {
+			fmt.sbprintln(&builder, "        headers['Content-Type'] = 'application/json';")
+		}
 		fmt.sbprintln(&builder, "        return await this.request({")
 		fmt.sbprintfln(&builder, "            method: '%v',", get_request_type_name(request.type))
 		fmt.sbprintln(&builder, "            path,")
-		fmt.sbprintln(&builder, "            headers: {},")
+		fmt.sbprintln(&builder, "            headers,")
 		if len(request.request_body_type) > 0 {
 			fmt.sbprintln(&builder, "            body,")
 		}
@@ -259,6 +264,7 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 		}
 		fmt.sbprintln(&builder, "        }, overrides);")
 		fmt.sbprintln(&builder, "    }")
+		// typed request
 		fmt.sbprintfln(
 			&builder,
 			"    async %v(%v)%v {{",
