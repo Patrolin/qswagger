@@ -27,10 +27,10 @@ main :: proc() {
 	swagger_runtime := print_swagger_runtime()
 	os.write_entire_file(strings.join({OUT_DIR, "runtime.ts"}, ""), transmute([]u8)swagger_runtime)
 	// model, api
-	os.make_directory(strings.join({OUT_DIR, "model"}, ""))
-	os.make_directory(strings.join({OUT_DIR, "api"}, ""))
-	model_index_file := open_index_file_for_writing(strings.join({OUT_DIR, "model/index.ts"}, ""))
-	apis_index_file := open_index_file_for_writing(strings.join({OUT_DIR, "api/index.ts"}, ""))
+	os.make_directory(strings.join({OUT_DIR, "models"}, ""))
+	os.make_directory(strings.join({OUT_DIR, "apis"}, ""))
+	model_index_file := open_index_file_for_writing(strings.join({OUT_DIR, "models/index.ts"}, ""))
+	apis_index_file := open_index_file_for_writing(strings.join({OUT_DIR, "apis/index.ts"}, ""))
 	for url in urls {
 		// fetch
 		fmt.printfln("url: %v", url)
@@ -48,7 +48,7 @@ main :: proc() {
 			file_to_write := print_typescript_model(name, model)
 			//fmt.printfln("-- %v", name)
 			//fmt.println(file_to_write)
-			file_path := strings.join({OUT_DIR, "model/", name, ".ts"}, "")
+			file_path := strings.join({OUT_DIR, "models/", name, ".ts"}, "")
 			fmt.printfln("- %v", file_path)
 			os.write_entire_file(file_path, transmute([]u8)file_to_write)
 		}
@@ -60,7 +60,7 @@ main :: proc() {
 			file_to_write := print_typescript_api(group, api)
 			//fmt.printfln("-- %v", name)
 			//fmt.printfln("%v", file_to_write)
-			file_path := strings.join({OUT_DIR, "api/", group, "Api", ".ts"}, "")
+			file_path := strings.join({OUT_DIR, "apis/", group, "Api", ".ts"}, "")
 			fmt.printfln("- %v", file_path)
 			os.write_entire_file(file_path, transmute([]u8)file_to_write)
 		}

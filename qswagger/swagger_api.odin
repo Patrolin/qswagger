@@ -176,7 +176,7 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 		if len(request.response_type) > 0 {acc_imports[request.response_type] = true}
 	}
 	for key in sort_keys(acc_imports) {
-		fmt.sbprintfln(&builder, "import {{%v}} from '../model/%v'", key, key)
+		fmt.sbprintfln(&builder, "import {{%v}} from '../models/%v'", key, key)
 	}
 	fmt.sbprintln(&builder, "import * as runtime from '../runtime'")
 	fmt.sbprintln(&builder)
