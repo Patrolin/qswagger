@@ -19,3 +19,11 @@ json_get_string :: proc(data: json.Object, key: string) -> string {
 		{return ""}
 	}
 }
+json_get_object :: proc(data: json.Object, keys: ..string) -> (result: json.Object, ok: bool) {
+	result = data
+	for key in keys {
+		result, ok = result[key].(json.Object)
+		if !ok {return}
+	}
+	return
+}
