@@ -225,7 +225,7 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 			append(&args, strings.join({"body: ", request.request_body_type}, ""))
 			append(&arg_names, "body")
 		}
-		append(&args, "overrides: RequestInit")
+		append(&args, "overrides: RequestInit = {}")
 		append(&arg_names, "overrides")
 		args_string := strings.join(args[:], ", ")
 		raw_response_type_string := ": Promise<Response>"
