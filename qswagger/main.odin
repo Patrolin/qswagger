@@ -70,3 +70,4 @@ main :: proc() {
 		}
 	}
 }
+// TODO: throw error on required parameters?

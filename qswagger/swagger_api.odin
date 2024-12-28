@@ -229,13 +229,8 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 		append(&arg_names, "overrides")
 		args_string := strings.join(args[:], ", ")
 		raw_response_type_string := ": Promise<Response>"
-		response_type_string := strings.join(
-			{": Promise<", len(request.response_type) > 0 ? request.response_type : "void", ">"},
-			"",
-		)
-		if len(request.response_type) > 0 {
-
-		}
+		response_type_string :=
+			len(request.response_type) > 0 ? strings.join({": Promise<", request.response_type, ">"}, "") : ""
 		fmt.sbprintfln(
 			&builder,
 			"    async %v_Raw(%v)%v {{",
@@ -277,11 +272,13 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 			request_name,
 			strings.join(arg_names[:], ", "),
 		)
-		fmt.sbprint(&builder, "        return await new runtime.JSONApiResponse(response")
-		if len(response_type_string) >= 2 {
+		if len(response_type_string) > 0 {
+			fmt.sbprint(&builder, "        return await new runtime.JSONApiResponse(response")
 			fmt.sbprintf(&builder, ", v => v as %v", response_type_string[2:])
+			fmt.sbprintln(&builder, ").value();")
+		} else {
+			fmt.sbprintln(&builder, "        return await new runtime.VoidApiResponse(response);")
 		}
-		fmt.sbprintln(&builder, ").value();")
 		fmt.sbprintln(&builder, "    }")
 	}
 	fmt.sbprintln(&builder, "}")
