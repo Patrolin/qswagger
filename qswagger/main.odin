@@ -3,6 +3,7 @@ package main
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
+import "core:path/filepath"
 import "core:strings"
 
 OUT_DIR :: "fetch/"
@@ -13,12 +14,28 @@ open_index_file_for_writing :: proc(file_path: string) -> os.Handle {
 	os.write(file, transmute([]u8)AUTOGEN_HEADER)
 	return file
 }
+remove_directory_recursive :: proc(file_path: string) {
+	callback :: proc(
+		info: os.File_Info,
+		in_err: os.Error,
+		user_data: rawptr,
+	) -> (
+		err: os.Error,
+		skip_dir: bool,
+	) {
+		if !info.is_dir {return os.remove(info.fullpath), false}
+		return nil, false
+	}
+	filepath.walk(file_path, callback, nil)
+	os.remove_directory(file_path)
+}
 main :: proc() {
 	if len(os.args) < 2 {
 		fmt.println("Usage: qswagger <...urls>")
 		os.exit(1)
 	}
 	urls := os.args[1:]
+	remove_directory_recursive(OUT_DIR)
 	os.make_directory(OUT_DIR)
 	// index.ts
 	swagger_index := print_swagger_index()
