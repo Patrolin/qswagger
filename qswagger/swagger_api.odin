@@ -15,10 +15,10 @@ SwaggerRequest :: struct {
 	response_type:     string,
 }
 SwaggerRequestType :: enum {
-	Get,
-	Post,
 	Delete,
+	Get,
 	Patch,
+	Post,
 }
 SwaggerRequestParam :: struct {
 	name:     string,
@@ -90,32 +90,25 @@ add_api_item :: proc(
 }
 parse_apis :: proc(data: json.Object, module_prefix: string) -> ^map[string]SwaggerApi {
 	acc_apis := new(map[string]SwaggerApi)
-	for path, _value in data["paths"].(json.Object) {
-		value := _value.(json.Object)
-		if "get" in value {
-			add_api_item(
-				acc_apis,
-				SwaggerRequestType.Get,
-				path,
-				value["get"].(json.Object),
-				module_prefix,
-			)
-		}
-		if "post" in value {
-			add_api_item(
-				acc_apis,
-				SwaggerRequestType.Post,
-				path,
-				value["post"].(json.Object),
-				module_prefix,
-			)
-		}
+	paths := data["paths"].(json.Object)
+	paths_v := (map[string]json.Value)(paths)
+	for path in sort_keys(paths_v) {
+		value := paths_v[path].(json.Object)
 		if "delete" in value {
 			add_api_item(
 				acc_apis,
 				SwaggerRequestType.Delete,
 				path,
 				value["delete"].(json.Object),
+				module_prefix,
+			)
+		}
+		if "get" in value {
+			add_api_item(
+				acc_apis,
+				SwaggerRequestType.Get,
+				path,
+				value["get"].(json.Object),
 				module_prefix,
 			)
 		}
@@ -128,32 +121,41 @@ parse_apis :: proc(data: json.Object, module_prefix: string) -> ^map[string]Swag
 				module_prefix,
 			)
 		}
+		if "post" in value {
+			add_api_item(
+				acc_apis,
+				SwaggerRequestType.Post,
+				path,
+				value["post"].(json.Object),
+				module_prefix,
+			)
+		}
 	}
 	return acc_apis
 }
 get_request_type_name :: proc(request_type: SwaggerRequestType) -> string {
 	switch request_type {
-	case .Get:
-		return "GET"
-	case .Post:
-		return "POST"
 	case .Delete:
 		return "DELETE"
+	case .Get:
+		return "GET"
 	case .Patch:
 		return "PATCH"
+	case .Post:
+		return "POST"
 	}
 	return "GET"
 }
 get_request_type_name_capitalized :: proc(request_type: SwaggerRequestType) -> string {
 	switch request_type {
-	case .Get:
-		return "Get"
-	case .Post:
-		return "Post"
 	case .Delete:
 		return "Delete"
+	case .Get:
+		return "Get"
 	case .Patch:
 		return "Patch"
+	case .Post:
+		return "Post"
 	}
 	return "Get"
 }
@@ -164,8 +166,13 @@ get_request_name :: proc(request: SwaggerRequest) -> string {
 	request_name, was_allocation := path[start:], false
 	request_name, was_allocation = strings.replace_all(request_name, "/{", "_")
 	request_name, was_allocation = strings.replace_all(request_name, "/", "")
-	request_name, was_allocation = strings.replace_all(request_name, "}", "")
-	return strings.join({request_name, get_request_type_name_capitalized(request.type)}, "_")
+	request_name, was_allocation = strings.replace_all(request_name, "}", "_")
+	request_name = strings.join(
+		{request_name, get_request_type_name_capitalized(request.type)},
+		"_",
+	)
+	request_name, was_allocation = strings.replace_all(request_name, "__", "_")
+	return strings.trim_suffix(request_name, "_")
 }
 print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 	builder := strings.builder_make_none()
