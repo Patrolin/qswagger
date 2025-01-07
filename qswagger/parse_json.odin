@@ -1,5 +1,7 @@
 package main
 import "core:encoding/json"
+import "core:fmt"
+import "core:strings"
 
 json_get_boolean :: proc(data: json.Object, key: string) -> bool {
 	value := data[key]
@@ -26,4 +28,26 @@ json_get_object :: proc(data: json.Object, keys: ..string) -> (result: json.Obje
 		if !ok {return}
 	}
 	return
+}
+// to string
+json_to_string_array :: proc(data: json.Object, key: string) -> []string {
+	acc: [dynamic]string
+	array, ok := data[key].(json.Array)
+	if ok {
+		for value in array {
+			sb := strings.builder_make_none()
+			#partial switch v in value {
+			case json.String:
+				{fmt.sbprintf(&sb, "'%v'", v)}
+			case json.Integer:
+				{fmt.sbprintf(&sb, "%v", v)}
+			case json.Null:
+				{fmt.sbprintf(&sb, "null")}
+			case:
+				fmt.assertf(false, "Unsupported enum value: %v", v)
+			}
+			append(&acc, strings.to_string(sb))
+		}
+	}
+	return acc[:]
 }

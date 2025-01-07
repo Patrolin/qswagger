@@ -27,6 +27,7 @@ SwaggerModelProperty :: union {
 	SwaggerModelPropertyDynamicArray,
 }
 SwaggerModelPropertyPrimitive :: struct {
+	enum_:    []string,
 	type:     string,
 	format:   string,
 	nullable: bool,
@@ -54,6 +55,7 @@ get_swagger_property :: proc(
 		return SwaggerModelPropertyDynamicArray{array_value}
 	} else {
 		return SwaggerModelPropertyPrimitive {
+			enum_ = json_to_string_array(property, "enum"),
 			format = json_get_string(property, "format"),
 			type = json_get_string(property, "type"),
 			nullable = json_get_boolean(property, "nullable"),
@@ -98,7 +100,7 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 				fmt.sbprintfln(&builder, "    %v", value)
 			}
 		}
-		fmt.sbprintfln(&builder, "}")
+		fmt.sbprintfln(&builder, "};")
 	case SwaggerModelStruct:
 		// imports
 		acc_imports: map[string]bool
@@ -149,15 +151,19 @@ get_typescript_type :: proc(
 ) {
 	switch m in struct_model {
 	case SwaggerModelPropertyPrimitive:
-		switch m.type {
-		case "boolean":
-			type = "boolean"
-		case "integer", "number":
-			type = "number"
-		case "string":
-			type = "string"
-		case:
-			fmt.assertf(false, "TODO: handle primitive types: %v", m)
+		if len(m.enum_) > 0 {
+			type = strings.join(m.enum_, " | ")
+		} else {
+			switch m.type {
+			case "boolean":
+				type = "boolean"
+			case "integer", "number":
+				type = "number"
+			case "string":
+				type = "string"
+			case:
+				fmt.assertf(false, "TODO: handle primitive types: %v", m)
+			}
 		}
 		format = m.format
 		nullable = m.nullable
