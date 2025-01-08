@@ -132,14 +132,14 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 }
 print_typescript_type_def :: proc(key: string, property: SwaggerModelProperty) -> string {
 	builder := strings.builder_make_none()
-	type, format, nullable, is_array := get_typescript_type(property)
+	type, format, needs_brackets, nullable, is_array := get_typescript_type(property)
 	fmt.sbprintf(&builder, "%v", key)
 	has_question_mark_colon := nullable && !is_array
 	fmt.sbprintf(&builder, has_question_mark_colon ? "?: " : ": ")
-	has_or_undefined := nullable && is_array
-	if has_or_undefined {fmt.sbprint(&builder, "(")}
+	if needs_brackets && is_array {fmt.sbprint(&builder, "(")}
 	fmt.sbprint(&builder, type)
-	if has_or_undefined {fmt.sbprint(&builder, "| undefined)")}
+	if nullable && is_array {fmt.sbprint(&builder, "| undefined")}
+	if needs_brackets && is_array {fmt.sbprint(&builder, ")")}
 	if is_array {fmt.sbprint(&builder, "[]")}
 	return strings.to_string(builder)
 }
@@ -147,12 +147,14 @@ get_typescript_type :: proc(
 	struct_model: SwaggerModelProperty,
 ) -> (
 	type, format: string,
+	needs_brackets: bool,
 	nullable, is_array: bool,
 ) {
 	switch m in struct_model {
 	case SwaggerModelPropertyPrimitive:
 		if len(m.enum_) > 0 {
 			type = strings.join(m.enum_, " | ")
+			needs_brackets = true
 		} else {
 			switch m.type {
 			case "boolean":
@@ -170,8 +172,9 @@ get_typescript_type :: proc(
 	case SwaggerModelPropertyReference:
 		type = m.name
 	case SwaggerModelPropertyDynamicArray:
-		type, format, nullable, is_array = get_typescript_type(m.value^)
+		type, format, needs_brackets, nullable, is_array = get_typescript_type(m.value^)
 		is_array = true
 	}
+	if nullable {needs_brackets = true}
 	return
 }
