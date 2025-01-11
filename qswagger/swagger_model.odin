@@ -162,7 +162,7 @@ get_typescript_type :: proc(
 			case "integer", "number":
 				type = "number"
 			case "string":
-				type = "string"
+				type = m.format == "binary" ? "Blob" : "string"
 			case:
 				fmt.assertf(false, "TODO: handle primitive types: %v", m)
 			}
