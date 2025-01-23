@@ -42,25 +42,33 @@ get_swagger_property :: proc(
 	property: json.Object,
 	module_prefix: string,
 ) -> SwaggerModelProperty {
-	ref_key, is_ref := property["$ref"].(json.String)
-	if is_ref {
+	type, has_type := property["type"].(json.String)
+	if has_type {
+		if type == "array" {
+			array_value := new(SwaggerModelProperty)
+			array_value^ = get_swagger_property(property["items"].(json.Object), module_prefix)
+			return SwaggerModelPropertyDynamicArray{array_value}
+		} else {
+			return SwaggerModelPropertyPrimitive {
+				enum_ = json_to_string_array(property, "enum"),
+				format = json_get_string(property, "format"),
+				type = json_get_string(property, "type"),
+				nullable = json_get_boolean(property, "nullable"),
+			}
+		}
+	}
+	ref_key, has_ref := property["$ref"].(json.String)
+	if has_ref {
 		last_slash := strings.last_index(ref_key, "/")
 		ref_name := strings.join({module_prefix, ref_key[last_slash + 1:]}, "")
 		return SwaggerModelPropertyReference{ref_name}
 	}
-	type := property["type"].(json.String)
-	if type == "array" {
-		array_value := new(SwaggerModelProperty)
-		array_value^ = get_swagger_property(property["items"].(json.Object), module_prefix)
-		return SwaggerModelPropertyDynamicArray{array_value}
-	} else {
-		return SwaggerModelPropertyPrimitive {
-			enum_ = json_to_string_array(property, "enum"),
-			format = json_get_string(property, "format"),
-			type = json_get_string(property, "type"),
-			nullable = json_get_boolean(property, "nullable"),
-		}
+	all_of, has_all_of := property["allOf"].(json.Array)
+	if has_all_of && len(all_of) == 1 {
+		return get_swagger_property(all_of[0].(json.Object), module_prefix)
 	}
+	fmt.assertf(false, "Unsupported type definition: %v", property)
+	return SwaggerModelPropertyPrimitive{} // make compiler happy
 }
 parse_models :: proc(data: json.Object, module_prefix: string) -> ^map[string]SwaggerModel {
 	acc_models := new(map[string]SwaggerModel)

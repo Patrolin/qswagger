@@ -31,7 +31,7 @@ remove_directory_recursive :: proc(file_path: string) {
 }
 main :: proc() {
 	if len(os.args) < 2 {
-		fmt.println("Usage: qswagger <...urls>")
+		fmt.println("Usage: qswagger <...urlsOrFiles>")
 		os.exit(1)
 	}
 	urls := os.args[1:]
@@ -51,7 +51,12 @@ main :: proc() {
 	for url in urls {
 		// fetch
 		fmt.printfln("url: %v", url)
-		data := get_json(url)
+		data: json.Object
+		if strings.starts_with(url, "http://") || strings.starts_with(url, "https://") {
+			data = fetch_json(url)
+		} else {
+			data = read_file_json(url)
+		}
 		fmt.printfln("info: %v", data["info"])
 		// title
 		module := get_swagger_title(data)
