@@ -40,6 +40,20 @@ SwaggerRequestJsonBody :: struct {
 SwaggerRequestMultipartBody :: struct {
 	model: SwaggerModelStruct,
 }
+get_request_body_type_name :: proc(property: SwaggerModelProperty) -> string {
+	if ref, is_ref := property.(SwaggerModelPropertyReference); is_ref {
+		return ref.name
+	} else {
+		if all_of, is_all_of := property.(SwaggerModelPropertyAllOf); is_all_of {
+			name := all_of.items[0].(SwaggerModelPropertyReference).name
+			nullable := all_of.nullable
+			return nullable ? strings.join({name, "undefined"}, " | ") : name
+		} else {
+			fmt.assertf(false, "Unsupported body type: %v", property)
+			return "" // make compiler happy
+		}
+	}
+}
 add_api_item :: proc(
 	acc_apis: ^map[string]SwaggerApi,
 	type: SwaggerRequestType,
@@ -83,9 +97,8 @@ add_api_item :: proc(
 		"schema",
 	)
 	if request_body_is_json {
-		request_body = SwaggerRequestJsonBody {
-			get_swagger_property(request_body_json_data, module_prefix).(SwaggerModelPropertyReference).name,
-		}
+		request_body_type := get_swagger_property(request_body_json_data, module_prefix)
+		request_body = SwaggerRequestJsonBody{get_request_body_type_name(request_body_type)}
 	}
 	request_body_multipart_data, request_body_is_multipart := json_get_object(
 		value,

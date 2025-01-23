@@ -25,6 +25,7 @@ SwaggerModelProperty :: union {
 	SwaggerModelPropertyPrimitive,
 	SwaggerModelPropertyReference,
 	SwaggerModelPropertyDynamicArray,
+	SwaggerModelPropertyAllOf,
 }
 SwaggerModelPropertyPrimitive :: struct {
 	enum_:    []string,
@@ -36,7 +37,12 @@ SwaggerModelPropertyReference :: struct {
 	name: string,
 }
 SwaggerModelPropertyDynamicArray :: struct {
-	value: ^SwaggerModelProperty,
+	value:    ^SwaggerModelProperty,
+	nullable: bool,
+}
+SwaggerModelPropertyAllOf :: struct {
+	items:    []SwaggerModelProperty,
+	nullable: bool, // NOTE: SwaggerModelPropertyReference doesn't have nullable, so this is often used as a workaround
 }
 get_swagger_property :: proc(
 	property: json.Object,
@@ -47,7 +53,8 @@ get_swagger_property :: proc(
 		if type == "array" {
 			array_value := new(SwaggerModelProperty)
 			array_value^ = get_swagger_property(property["items"].(json.Object), module_prefix)
-			return SwaggerModelPropertyDynamicArray{array_value}
+			nullable := json_get_boolean(property, "nullable")
+			return SwaggerModelPropertyDynamicArray{array_value, nullable}
 		} else {
 			return SwaggerModelPropertyPrimitive {
 				enum_ = json_to_string_array(property, "enum"),
@@ -64,8 +71,13 @@ get_swagger_property :: proc(
 		return SwaggerModelPropertyReference{ref_name}
 	}
 	all_of, has_all_of := property["allOf"].(json.Array)
-	if has_all_of && len(all_of) == 1 {
-		return get_swagger_property(all_of[0].(json.Object), module_prefix)
+	if has_all_of {
+		items: [dynamic]SwaggerModelProperty
+		for item in all_of {
+			append(&items, get_swagger_property(item.(json.Object), module_prefix))
+		}
+		nullable := json_get_boolean(property, "nullable")
+		return SwaggerModelPropertyAllOf{items[:], nullable}
 	}
 	fmt.assertf(false, "Unsupported type definition: %v", property)
 	return SwaggerModelPropertyPrimitive{} // make compiler happy
@@ -122,6 +134,13 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 			if is_reference && !(reference.name in acc_imports) {
 				acc_imports[reference.name] = true
 			}
+			all_of, is_all_of := property.(SwaggerModelPropertyAllOf)
+			for item in all_of.items {
+				reference, is_reference := item.(SwaggerModelPropertyReference)
+				if is_reference && !(reference.name in acc_imports) {
+					acc_imports[reference.name] = true
+				}
+			}
 		}
 		for import_name in sort_keys(acc_imports) {
 			fmt.sbprintfln(&builder, "import {{%v}} from './%v'", import_name, import_name)
@@ -140,15 +159,18 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 }
 print_typescript_type_def :: proc(key: string, property: SwaggerModelProperty) -> string {
 	builder := strings.builder_make_none()
-	type, format, needs_brackets, nullable, is_array := get_typescript_type(property)
+	type, format, needs_brackets, nullable, is_array, is_array_nullable := get_typescript_type(
+		property,
+	)
 	fmt.sbprintf(&builder, "%v", key)
 	has_question_mark_colon := nullable && !is_array
 	fmt.sbprintf(&builder, has_question_mark_colon ? "?: " : ": ")
 	if needs_brackets && is_array {fmt.sbprint(&builder, "(")}
 	fmt.sbprint(&builder, type)
-	if nullable && is_array {fmt.sbprint(&builder, "| undefined")}
+	if is_array && nullable {fmt.sbprint(&builder, " | undefined")}
 	if needs_brackets && is_array {fmt.sbprint(&builder, ")")}
 	if is_array {fmt.sbprint(&builder, "[]")}
+	if is_array_nullable {fmt.sbprint(&builder, " | undefined")}
 	return strings.to_string(builder)
 }
 get_typescript_type :: proc(
@@ -156,7 +178,7 @@ get_typescript_type :: proc(
 ) -> (
 	type, format: string,
 	needs_brackets: bool,
-	nullable, is_array: bool,
+	nullable, is_array, is_array_nullable: bool,
 ) {
 	switch m in struct_model {
 	case SwaggerModelPropertyPrimitive:
@@ -180,8 +202,19 @@ get_typescript_type :: proc(
 	case SwaggerModelPropertyReference:
 		type = m.name
 	case SwaggerModelPropertyDynamicArray:
-		type, format, needs_brackets, nullable, is_array = get_typescript_type(m.value^)
+		type, format, needs_brackets, nullable, is_array, is_array_nullable = get_typescript_type(
+			m.value^,
+		)
 		is_array = true
+		is_array_nullable = m.nullable
+	case SwaggerModelPropertyAllOf:
+		item_strings: [dynamic]string
+		for item in m.items {
+			item_type, _, _, _, _, _ := get_typescript_type(item)
+			append(&item_strings, item_type)
+		}
+		type = strings.join(item_strings[:], " | ")
+		nullable = m.nullable
 	}
 	if nullable {needs_brackets = true}
 	return
