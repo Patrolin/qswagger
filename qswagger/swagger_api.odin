@@ -74,7 +74,7 @@ add_api_item :: proc(
 		for param in params_data {
 			param := param.(json.Object)
 			param_name := param["name"].(json.String)
-			property := get_swagger_property(param["schema"].(json.Object), module_prefix)
+			property := get_swagger_property(param["schema"].(json.Object), module_prefix, {})
 			param_type: SwaggerRequestParamType
 			param_type_data := param["in"].(json.String)
 			switch param_type_data {
@@ -97,7 +97,11 @@ add_api_item :: proc(
 		"schema",
 	)
 	if request_body_is_json {
-		request_body_type := get_swagger_property(request_body_json_data, module_prefix)
+		request_body_type := get_swagger_property(
+			request_body_json_data,
+			module_prefix,
+			{"<json_request_type>"},
+		)
 		request_body = SwaggerRequestJsonBody{get_request_body_type_name(request_body_type)}
 	}
 	request_body_multipart_data, request_body_is_multipart := json_get_object(
@@ -111,7 +115,11 @@ add_api_item :: proc(
 		model: SwaggerModelStruct
 		for key, _property in request_body_multipart_data["properties"].(json.Object) {
 			property := _property.(json.Object)
-			model[key] = get_swagger_property(property, module_prefix)
+			model[key] = get_swagger_property(
+				property,
+				module_prefix,
+				{"<multipart_request_type>"},
+			)
 		}
 		request_body = SwaggerRequestMultipartBody{model}
 	}
@@ -125,7 +133,7 @@ add_api_item :: proc(
 		"schema",
 	)
 	response_type :=
-		response_data_ok ? get_swagger_property(response_data, module_prefix).(SwaggerModelPropertyReference).name : ""
+		response_data_ok ? get_swagger_property(response_data, module_prefix, {"<json_response_type>"}).(SwaggerModelPropertyReference).name : ""
 	// append
 	append(
 		&acc_apis[group],

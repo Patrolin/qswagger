@@ -47,12 +47,19 @@ SwaggerModelPropertyAllOf :: struct {
 get_swagger_property :: proc(
 	property: json.Object,
 	module_prefix: string,
+	_debug_name: []string,
+	loc := #caller_location,
 ) -> SwaggerModelProperty {
 	type, has_type := property["type"].(json.String)
 	if has_type {
 		if type == "array" {
 			array_value := new(SwaggerModelProperty)
-			array_value^ = get_swagger_property(property["items"].(json.Object), module_prefix)
+			array_value^ = get_swagger_property(
+				property["items"].(json.Object),
+				module_prefix,
+				_debug_name,
+				loc = loc,
+			)
 			nullable := json_get_boolean(property, "nullable")
 			return SwaggerModelPropertyDynamicArray{array_value, nullable}
 		} else {
@@ -74,12 +81,22 @@ get_swagger_property :: proc(
 	if has_all_of {
 		items: [dynamic]SwaggerModelProperty
 		for item in all_of {
-			append(&items, get_swagger_property(item.(json.Object), module_prefix))
+			append(
+				&items,
+				get_swagger_property(item.(json.Object), module_prefix, _debug_name, loc = loc),
+			)
 		}
 		nullable := json_get_boolean(property, "nullable")
 		return SwaggerModelPropertyAllOf{items[:], nullable}
 	}
-	fmt.assertf(false, "Unsupported type definition: %v", property)
+	sb := strings.builder_make_none()
+	fmt.sbprint(&sb, "Unsupported type definition, key: '")
+	for key, i in _debug_name {
+		if i > 0 {fmt.sbprint(&sb, ".")}
+		fmt.sbprint(&sb, key)
+	}
+	fmt.sbprintf(&sb, "', property: %v", property)
+	assert(false, strings.to_string(sb), loc = loc)
 	return SwaggerModelPropertyPrimitive{} // make compiler happy
 }
 parse_models :: proc(data: json.Object, module_prefix: string) -> ^map[string]SwaggerModel {
@@ -98,7 +115,7 @@ parse_models :: proc(data: json.Object, module_prefix: string) -> ^map[string]Sw
 			swagger_model: SwaggerModelStruct
 			for key, _property in value["properties"].(json.Object) {
 				property := _property.(json.Object)
-				swagger_model[key] = get_swagger_property(property, module_prefix)
+				swagger_model[key] = get_swagger_property(property, module_prefix, {name, key})
 			}
 			acc_models[name] = swagger_model
 			//fmt.printfln("object %v", name)
