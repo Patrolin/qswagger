@@ -7,12 +7,10 @@ Download `qswagger.exe` from https://github.com/Patrolin/qswagger/releases
 ## usage
 Generate apis and models
 ```
-Delete fetch folder (if it exists)
-./qswagger.exe <url>.json
+./qswagger.exe <urlOrFile>.json
 ```
 
 Generate apis and models from multiple modules
 ```
-Delete fetch folder (if it exists)
-./qswagger.exe <url1>.json <url2>.json
+./qswagger.exe <urlOrFile1>.json <urlOrFile2>.json
 ```
