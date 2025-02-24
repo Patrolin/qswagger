@@ -41,18 +41,24 @@ SwaggerRequestMultipartBody :: struct {
 	model: SwaggerModelStruct,
 }
 get_request_body_type_name :: proc(property: SwaggerModelProperty) -> string {
-	if ref, is_ref := property.(SwaggerModelPropertyReference); is_ref {
+	ref, is_ref := property.(SwaggerModelPropertyReference)
+	if is_ref {
 		return ref.name
-	} else {
-		if all_of, is_all_of := property.(SwaggerModelPropertyAllOf); is_all_of {
-			name := all_of.items[0].(SwaggerModelPropertyReference).name
-			nullable := all_of.nullable
-			return nullable ? strings.join({name, "undefined"}, " | ") : name
-		} else {
-			fmt.assertf(false, "Unsupported body type: %v", property)
-			return "" // make compiler happy
-		}
 	}
+	all_of, is_all_of := property.(SwaggerModelPropertyAllOf)
+	if is_all_of {
+		name := all_of.items[0].(SwaggerModelPropertyReference).name
+		nullable := all_of.nullable
+		return nullable ? strings.join({name, "undefined"}, " | ") : name
+	}
+	/*primitive, is_primitive := property.(SwaggerModelPropertyPrimitive)
+	if is_primitive {
+		name := primitive.type
+		nullable := primitive.nullable
+		return nullable ? strings.join({name, "undefined"}, " | ") : name
+	}*/
+	fmt.assertf(false, "Unsupported body type: %v", property)
+	return "" // make compiler happy
 }
 add_api_item :: proc(
 	acc_apis: ^map[string]SwaggerApi,

@@ -50,6 +50,24 @@ get_swagger_property :: proc(
 	_debug_name: []string,
 	loc := #caller_location,
 ) -> SwaggerModelProperty {
+	ref_key, has_ref := property["$ref"].(json.String)
+	if has_ref {
+		last_slash := strings.last_index(ref_key, "/")
+		ref_name := strings.join({module_prefix, ref_key[last_slash + 1:]}, "")
+		return SwaggerModelPropertyReference{ref_name}
+	}
+	all_of, has_all_of := property["allOf"].(json.Array)
+	if has_all_of {
+		items: [dynamic]SwaggerModelProperty
+		for item in all_of {
+			append(
+				&items,
+				get_swagger_property(item.(json.Object), module_prefix, _debug_name, loc = loc),
+			)
+		}
+		nullable := json_get_boolean(property, "nullable")
+		return SwaggerModelPropertyAllOf{items[:], nullable}
+	}
 	type, has_type := property["type"].(json.String)
 	if has_type {
 		if type == "array" {
@@ -70,24 +88,13 @@ get_swagger_property :: proc(
 				nullable = json_get_boolean(property, "nullable"),
 			}
 		}
-	}
-	ref_key, has_ref := property["$ref"].(json.String)
-	if has_ref {
-		last_slash := strings.last_index(ref_key, "/")
-		ref_name := strings.join({module_prefix, ref_key[last_slash + 1:]}, "")
-		return SwaggerModelPropertyReference{ref_name}
-	}
-	all_of, has_all_of := property["allOf"].(json.Array)
-	if has_all_of {
-		items: [dynamic]SwaggerModelProperty
-		for item in all_of {
-			append(
-				&items,
-				get_swagger_property(item.(json.Object), module_prefix, _debug_name, loc = loc),
-			)
+	} else {
+		fmt.printfln("property: %v", property)
+		return SwaggerModelPropertyPrimitive {
+			format = json_get_string(property, "format"),
+			type = "any",
+			nullable = json_get_boolean(property, "nullable"),
 		}
-		nullable := json_get_boolean(property, "nullable")
-		return SwaggerModelPropertyAllOf{items[:], nullable}
 	}
 	sb := strings.builder_make_none()
 	fmt.sbprint(&sb, "Unsupported type definition, key: '")
@@ -210,6 +217,14 @@ get_typescript_type :: proc(
 				type = "number"
 			case "string":
 				type = m.format == "binary" ? "Blob" : "string"
+			case "any":
+				{
+					nullOrEmpty := m.nullable ? " | null" : ""
+					type = strings.join(
+						{"string | number | boolean | any[] | Record<string, any>", nullOrEmpty},
+						"",
+					)
+				}
 			case:
 				fmt.assertf(false, "TODO: handle primitive types: %v", m)
 			}
