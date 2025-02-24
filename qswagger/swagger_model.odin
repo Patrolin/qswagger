@@ -130,72 +130,88 @@ parse_models :: proc(data: json.Object, module_prefix: string) -> ^map[string]Sw
 	}
 	return acc_models
 }
+
+// print model
 print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
-	builder := strings.builder_make_none()
-	fmt.sbprint(&builder, AUTOGEN_HEADER)
+	sb := strings.builder_make_none()
+	fmt.sbprint(&sb, AUTOGEN_HEADER)
 	switch m in model {
 	case SwaggerModelEnum:
 		// export enum
-		fmt.sbprintfln(&builder, "export enum %v {{", name)
+		fmt.sbprintfln(&sb, "export enum %v {{", name)
 		for value in m.values {
 			if m.type == "string" {
-				fmt.sbprintfln(&builder, "    %v = \"%v\",", value, value)
+				fmt.sbprintfln(&sb, "    %v = \"%v\",", value, value)
 			} else {
-				fmt.sbprintfln(&builder, "    %v", value)
+				fmt.sbprintfln(&sb, "    %v", value)
 			}
 		}
-		fmt.sbprintfln(&builder, "};")
+		fmt.sbprintfln(&sb, "};")
 	case SwaggerModelStruct:
 		// imports
-		acc_imports: map[string]bool
+		acc_imports: map[string]void
 		for key, property in m {
-			property := property
-			for array, is_array := property.(SwaggerModelPropertyDynamicArray); is_array; {
-				property = array.value^
-				array, is_array = property.(SwaggerModelPropertyDynamicArray)
-			}
-			reference, is_reference := property.(SwaggerModelPropertyReference)
-			if is_reference && !(reference.name in acc_imports) {
-				acc_imports[reference.name] = true
-			}
-			all_of, is_all_of := property.(SwaggerModelPropertyAllOf)
-			for item in all_of.items {
-				reference, is_reference := item.(SwaggerModelPropertyReference)
-				if is_reference && !(reference.name in acc_imports) {
-					acc_imports[reference.name] = true
-				}
-			}
+			add_imports(&acc_imports, property)
 		}
 		for import_name in sort_keys(acc_imports) {
-			fmt.sbprintfln(&builder, "import {{%v}} from './%v'", import_name, import_name)
+			fmt.sbprintfln(&sb, "import {{%v}} from './%v'", import_name, import_name)
 		}
-		if len(acc_imports) > 0 {fmt.sbprintln(&builder)}
+		if len(acc_imports) > 0 {fmt.sbprintln(&sb)}
 		// export type
-		fmt.sbprintfln(&builder, "export type %v = {{", name)
+		fmt.sbprintfln(&sb, "export type %v = {{", name)
 		for key in sort_keys(m) {
 			property := m[key]
-			type_def := print_typescript_type_def(key, property)
-			fmt.sbprintfln(&builder, "    %v;", type_def)
+			type_def := print_typescript_key_type(key, property)
+			fmt.sbprintfln(&sb, "    %v;", type_def)
 		}
-		fmt.sbprintln(&builder, "};")
+		fmt.sbprintln(&sb, "};")
 	}
-	return strings.to_string(builder)
+	return strings.to_string(sb)
 }
-print_typescript_type_def :: proc(key: string, property: SwaggerModelProperty) -> string {
-	builder := strings.builder_make_none()
+void :: struct {}
+add_imports :: proc(acc: ^map[string]void, model: SwaggerModelProperty) {
+	switch m in model {
+	case SwaggerModelPropertyPrimitive:
+	case SwaggerModelPropertyAllOf:
+		for v in m.items {
+			add_imports(acc, v)
+		}
+	case SwaggerModelPropertyDynamicArray:
+		add_imports(acc, m.value^)
+	case SwaggerModelPropertyReference:
+		acc[m.name] = {}
+	}
+}
+
+// print type
+print_typescript_key_type :: proc(key: string, property: SwaggerModelProperty) -> string {
+	sb := strings.builder_make_none()
 	type, format, needs_brackets, nullable, is_array, is_array_nullable := get_typescript_type(
 		property,
 	)
-	fmt.sbprintf(&builder, "%v", key)
+	fmt.sbprintf(&sb, "%v", key)
 	has_question_mark_colon := nullable && !is_array
-	fmt.sbprintf(&builder, has_question_mark_colon ? "?: " : ": ")
-	if needs_brackets && is_array {fmt.sbprint(&builder, "(")}
-	fmt.sbprint(&builder, type)
-	if is_array && nullable {fmt.sbprint(&builder, " | undefined")}
-	if needs_brackets && is_array {fmt.sbprint(&builder, ")")}
-	if is_array {fmt.sbprint(&builder, "[]")}
-	if is_array_nullable {fmt.sbprint(&builder, " | undefined")}
-	return strings.to_string(builder)
+	fmt.sbprintf(&sb, has_question_mark_colon ? "?: " : ": ")
+	if needs_brackets && is_array {fmt.sbprint(&sb, "(")}
+	fmt.sbprint(&sb, type)
+	if is_array && nullable {fmt.sbprint(&sb, " | undefined")}
+	if needs_brackets && is_array {fmt.sbprint(&sb, ")")}
+	if is_array {fmt.sbprint(&sb, "[]")}
+	if is_array_nullable {fmt.sbprint(&sb, " | undefined")}
+	return strings.to_string(sb)
+}
+print_typescript_type :: proc(property: SwaggerModelProperty) -> string {
+	sb := strings.builder_make_none()
+	type, format, needs_brackets, nullable, is_array, is_array_nullable := get_typescript_type(
+		property,
+	)
+	if needs_brackets && is_array {fmt.sbprint(&sb, "(")}
+	fmt.sbprint(&sb, type)
+	if is_array && nullable {fmt.sbprint(&sb, " | undefined")}
+	if needs_brackets && is_array {fmt.sbprint(&sb, ")")}
+	if is_array {fmt.sbprint(&sb, "[]")}
+	if is_array_nullable || (!is_array && nullable) {fmt.sbprint(&sb, " | undefined")}
+	return strings.to_string(sb)
 }
 get_typescript_type :: proc(
 	struct_model: SwaggerModelProperty,

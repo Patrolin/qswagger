@@ -12,7 +12,7 @@ SwaggerRequest :: struct {
 	query_params:      [dynamic]SwaggerRequestParam,
 	path_params:       [dynamic]SwaggerRequestParam,
 	request_body_type: SwaggerRequestBody,
-	response_type:     string,
+	response_type:     SwaggerResponseBody,
 }
 SwaggerRequestType :: enum {
 	Delete,
@@ -33,32 +33,16 @@ SwaggerRequestBody :: union {
 	SwaggerRequestJsonBody,
 	SwaggerRequestMultipartBody,
 }
+SwaggerResponseBody :: union {
+	SwaggerRequestNoBody,
+	SwaggerRequestJsonBody,
+}
 SwaggerRequestNoBody :: struct {}
 SwaggerRequestJsonBody :: struct {
-	type_: string,
+	property: SwaggerModelProperty,
 }
 SwaggerRequestMultipartBody :: struct {
 	model: SwaggerModelStruct,
-}
-get_request_body_type_name :: proc(property: SwaggerModelProperty) -> string {
-	ref, is_ref := property.(SwaggerModelPropertyReference)
-	if is_ref {
-		return ref.name
-	}
-	all_of, is_all_of := property.(SwaggerModelPropertyAllOf)
-	if is_all_of {
-		name := all_of.items[0].(SwaggerModelPropertyReference).name
-		nullable := all_of.nullable
-		return nullable ? strings.join({name, "undefined"}, " | ") : name
-	}
-	/*primitive, is_primitive := property.(SwaggerModelPropertyPrimitive)
-	if is_primitive {
-		name := primitive.type
-		nullable := primitive.nullable
-		return nullable ? strings.join({name, "undefined"}, " | ") : name
-	}*/
-	fmt.assertf(false, "Unsupported body type: %v", property)
-	return "" // make compiler happy
 }
 add_api_item :: proc(
 	acc_apis: ^map[string]SwaggerApi,
@@ -94,7 +78,7 @@ add_api_item :: proc(
 		}
 	}
 	// request body
-	request_body: SwaggerRequestBody = SwaggerRequestNoBody{}
+	request_body_type: SwaggerRequestBody = SwaggerRequestNoBody{}
 	request_body_json_data, request_body_is_json := json_get_object(
 		value,
 		"requestBody",
@@ -103,12 +87,9 @@ add_api_item :: proc(
 		"schema",
 	)
 	if request_body_is_json {
-		request_body_type := get_swagger_property(
-			request_body_json_data,
-			module_prefix,
-			{"<json_request_type>"},
-		)
-		request_body = SwaggerRequestJsonBody{get_request_body_type_name(request_body_type)}
+		request_body_type = SwaggerRequestJsonBody {
+			get_swagger_property(request_body_json_data, module_prefix, {"<json_request_type>"}),
+		}
 	}
 	request_body_multipart_data, request_body_is_multipart := json_get_object(
 		value,
@@ -127,7 +108,7 @@ add_api_item :: proc(
 				{"<multipart_request_type>"},
 			)
 		}
-		request_body = SwaggerRequestMultipartBody{model}
+		request_body_type = SwaggerRequestMultipartBody{model}
 	}
 	// response type
 	response_data, response_data_ok := json_get_object(
@@ -138,12 +119,23 @@ add_api_item :: proc(
 		"application/json",
 		"schema",
 	)
-	response_type :=
-		response_data_ok ? get_swagger_property(response_data, module_prefix, {"<json_response_type>"}).(SwaggerModelPropertyReference).name : ""
+	response_type: SwaggerResponseBody = SwaggerRequestNoBody{}
+	if response_data_ok {
+		response_type = SwaggerRequestJsonBody {
+			get_swagger_property(response_data, module_prefix, {"<json_response_type>"}),
+		}
+	}
 	// append
 	append(
 		&acc_apis[group],
-		SwaggerRequest{path, type, acc_query_params, acc_path_params, request_body, response_type},
+		SwaggerRequest {
+			path,
+			type,
+			acc_query_params,
+			acc_path_params,
+			request_body_type,
+			response_type,
+		},
 	)
 }
 parse_apis :: proc(data: json.Object, module_prefix: string) -> ^map[string]SwaggerApi {
@@ -237,7 +229,7 @@ get_request_body_type :: proc(request: SwaggerRequest, request_name: string) -> 
 	case SwaggerRequestNoBody:
 		return ""
 	case SwaggerRequestJsonBody:
-		return v.type_
+		return print_typescript_type(v.property)
 	case SwaggerRequestMultipartBody:
 		return strings.join({request_name, "_MultipartBody"}, "")
 	}
@@ -246,11 +238,16 @@ get_request_body_type :: proc(request: SwaggerRequest, request_name: string) -> 
 print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 	builder := strings.builder_make_none()
 	fmt.sbprint(&builder, AUTOGEN_HEADER)
-	acc_imports: map[string]bool
+	acc_imports: map[string]void
 	for request in api {
 		request_body_json, request_body_is_json := request.request_body_type.(SwaggerRequestJsonBody)
-		if request_body_is_json {acc_imports[request_body_json.type_] = true}
-		if len(request.response_type) > 0 {acc_imports[request.response_type] = true}
+		if request_body_is_json {
+			add_imports(&acc_imports, request_body_json.property)
+		}
+		response_body_json, response_body_is_json := request.response_type.(SwaggerRequestJsonBody)
+		if response_body_is_json {
+			add_imports(&acc_imports, response_body_json.property)
+		}
 	}
 	for key in sort_keys(acc_imports) {
 		fmt.sbprintfln(&builder, "import {{%v}} from '../models/%v'", key, key)
@@ -263,7 +260,7 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 			type_name := strings.join({request_name, "_PathParams"}, "")
 			fmt.sbprintfln(&builder, "export type %v = {{", type_name)
 			for param in request.path_params {
-				type_def := print_typescript_type_def(param.name, param.property)
+				type_def := print_typescript_key_type(param.name, param.property)
 				fmt.sbprintfln(&builder, "    %v;", type_def)
 			}
 			fmt.sbprintln(&builder, "};")
@@ -272,7 +269,7 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 			type_name := strings.join({request_name, "_QueryParams"}, "")
 			fmt.sbprintfln(&builder, "export type %v = {{", type_name)
 			for param in request.query_params {
-				type_def := print_typescript_type_def(param.name, param.property)
+				type_def := print_typescript_key_type(param.name, param.property)
 				fmt.sbprintfln(&builder, "    %v;", type_def)
 			}
 			fmt.sbprintln(&builder, "};")
@@ -284,7 +281,7 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 			fmt.sbprintfln(&builder, "export type %v = {{", type_name)
 			for key in sort_keys(m) {
 				property := m[key]
-				type_def := print_typescript_type_def(key, property)
+				type_def := print_typescript_key_type(key, property)
 				fmt.sbprintfln(&builder, "    %v;", type_def)
 			}
 			fmt.sbprintln(&builder, "};")
@@ -319,8 +316,12 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 		append(&arg_names, "overrides")
 		args_string := strings.join(args[:], ", ")
 		raw_response_type_string := ": Promise<Response>"
-		response_type_string :=
-			len(request.response_type) > 0 ? strings.join({": Promise<", request.response_type, ">"}, "") : ""
+		response_type_string := "void"
+		response_type_json, response_type_is_json := request.response_type.(SwaggerRequestJsonBody)
+		if response_type_is_json {
+			response_type_string = print_typescript_type(response_type_json.property)
+		}
+		response_type_string = strings.join({": Promise<", response_type_string, ">"}, "")
 		// raw request
 		fmt.sbprintfln(
 			&builder,
