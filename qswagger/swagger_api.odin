@@ -332,11 +332,12 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 		)
 		fmt.sbprintfln(&builder, "        let path = '%v';", request.path)
 		for param in request.path_params {
+			formatted_param := format_typescript_param(param, "path_params.")
 			fmt.sbprintfln(
 				&builder,
-				"        path = path.replace('{{%v}}', encodeURIComponent(String(path_params.%v)));",
+				"        path = path.replace('{{%v}}', encodeURIComponent(%v));",
 				param.name,
-				param.name,
+				formatted_param,
 			)
 		}
 		fmt.sbprint(&builder, AUTH_PREAMBLE)
@@ -393,4 +394,14 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 	}
 	fmt.sbprintln(&builder, "}")
 	return strings.to_string(builder)
+}
+format_typescript_param :: proc(param: SwaggerRequestParam, prefix: string) -> string {
+	sb := strings.builder_make_none()
+	primitive, is_primitive := param.property.(SwaggerModelPropertyPrimitive)
+	if global_args.gen_dates && is_primitive && primitive.format == "date-time" {
+		fmt.sbprintf(&sb, "%v%v.toISOString()", prefix, param.name)
+	} else {
+		fmt.sbprintf(&sb, "String(%v%v)", prefix, param.name)
+	}
+	return strings.to_string(sb)
 }

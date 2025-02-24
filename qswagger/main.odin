@@ -7,34 +7,31 @@ import "core:path/filepath"
 import "core:strings"
 
 OUT_DIR :: "fetch/"
+GlobalArgs :: struct {
+	gen_dates: bool,
+}
+global_args := GlobalArgs{}
 
-open_index_file_for_writing :: proc(file_path: string) -> os.Handle {
-	file, file_error := os.open(file_path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0)
-	fmt.assertf(file_error == nil, "Couldn't open %v file: %v", file_path, file_error)
-	os.write(file, transmute([]u8)AUTOGEN_HEADER)
-	return file
-}
-remove_directory_recursive :: proc(file_path: string) {
-	callback :: proc(
-		info: os.File_Info,
-		in_err: os.Error,
-		user_data: rawptr,
-	) -> (
-		err: os.Error,
-		skip_dir: bool,
-	) {
-		if !info.is_dir {return os.remove(info.fullpath), false}
-		return nil, false
-	}
-	filepath.walk(file_path, callback, nil)
-	os.remove_directory(file_path)
-}
+// TODO: throw error in typescript if required parameters are missing?
 main :: proc() {
 	if len(os.args) < 2 {
 		fmt.println("Usage: qswagger <...urlsOrFiles>")
 		os.exit(1)
 	}
-	urls := os.args[1:]
+	urls: [dynamic]string
+	for arg in os.args[1:] {
+		if strings.starts_with(arg, "-") {
+			switch arg {
+			case "-gen_dates":
+				global_args.gen_dates = true
+			case:
+				fmt.assertf(false, "Unknown argument: %v", arg)
+			}
+		} else {
+			append(&urls, arg)
+		}
+	}
+	fmt.printfln("global_args, %v", global_args)
 	remove_directory_recursive(OUT_DIR)
 	os.make_directory(OUT_DIR)
 	// index.ts
@@ -92,4 +89,24 @@ main :: proc() {
 		}
 	}
 }
-// TODO: throw error on required parameters?
+remove_directory_recursive :: proc(file_path: string) {
+	callback :: proc(
+		info: os.File_Info,
+		in_err: os.Error,
+		user_data: rawptr,
+	) -> (
+		err: os.Error,
+		skip_dir: bool,
+	) {
+		if !info.is_dir {return os.remove(info.fullpath), false}
+		return nil, false
+	}
+	filepath.walk(file_path, callback, nil)
+	os.remove_directory(file_path)
+}
+open_index_file_for_writing :: proc(file_path: string) -> os.Handle {
+	file, file_error := os.open(file_path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0)
+	fmt.assertf(file_error == nil, "Couldn't open %v file: %v", file_path, file_error)
+	os.write(file, transmute([]u8)AUTOGEN_HEADER)
+	return file
+}

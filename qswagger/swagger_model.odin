@@ -232,7 +232,16 @@ get_typescript_type :: proc(
 			case "integer", "number":
 				type = "number"
 			case "string":
-				type = m.format == "binary" ? "Blob" : "string"
+				{
+					switch m.format {
+					case "binary":
+						type = "Blob"
+					case "date-time":
+						type = global_args.gen_dates ? "Date" : "string"
+					case:
+						type = "string"
+					}
+				}
 			case "any":
 				{
 					nullOrEmpty := m.nullable ? " | null" : ""
