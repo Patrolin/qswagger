@@ -398,10 +398,11 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 format_typescript_param :: proc(param: SwaggerRequestParam, prefix: string) -> string {
 	sb := strings.builder_make_none()
 	primitive, is_primitive := param.property.(SwaggerModelPropertyPrimitive)
+	prefixed_param := strings.join({prefix, param.name}, "")
 	if global_args.gen_dates && is_primitive && primitive.format == "date-time" {
-		fmt.sbprintf(&sb, "%v%v.toISOString()", prefix, param.name)
+		fmt.sbprintf(&sb, global_args.date_fmt, prefixed_param)
 	} else {
-		fmt.sbprintf(&sb, "String(%v%v)", prefix, param.name)
+		fmt.sbprintf(&sb, "String(%v)", prefixed_param)
 	}
 	return strings.to_string(sb)
 }

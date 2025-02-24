@@ -9,21 +9,31 @@ import "core:strings"
 OUT_DIR :: "fetch/"
 GlobalArgs :: struct {
 	gen_dates: bool,
+	date_fmt:  string,
 }
-global_args := GlobalArgs{}
+global_args := GlobalArgs {
+	gen_dates = false,
+	date_fmt  = "%v.toISOString()",
+}
 
 // TODO: throw error in typescript if required parameters are missing?
 main :: proc() {
-	if len(os.args) < 2 {
+	args := os.args
+	if len(args) < 2 {
 		fmt.println("Usage: qswagger <...urlsOrFiles>")
 		os.exit(1)
 	}
 	urls: [dynamic]string
-	for arg in os.args[1:] {
+	for i := 1; i < len(args); i += 1 {
+		arg := args[i]
 		if strings.starts_with(arg, "-") {
 			switch arg {
 			case "-gen_dates":
 				global_args.gen_dates = true
+			case "-date_fmt":
+				fmt.assertf(i + 1 < len(args), "Missing value for -date_fmt <string>")
+				global_args.date_fmt = args[i + 1]
+				i += 1
 			case:
 				fmt.assertf(false, "Unknown argument: %v", arg)
 			}
