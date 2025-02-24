@@ -21,3 +21,11 @@ instead of `{dateFrom: string}` and `dateFrom: String(params.dateFrom)`
 ```
 ./qswagger.exe <urlOrFile>.json -gen_dates
 ```
+
+Generate apis and models \
+with `{dateFrom: Date}` and `dateFrom: <date_fmt>` \
+instead of `{dateFrom: string}` and `dateFrom: String(params.dateFrom)` \
+(`Utils` must be imported manually)
+```
+./qswagger.exe <urlOrFile>.json -gen_dates -date_fmt "Utils.printIsoDate(%v)"
+```
