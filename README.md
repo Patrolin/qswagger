@@ -15,8 +15,9 @@ Generate apis and models from multiple modules
 ./qswagger.exe <urlOrFile1>.json <urlOrFile2>.json
 ```
 
-Generate apis and models with `dateFrom: Date` and `dateFrom: dateFrom.toISOString()`
-instead of `dateFrom: string` and `dateFrom: String(dateFrom)`
+Generate apis and models \
+with `{dateFrom: Date}` and `dateFrom: params.dateFrom.toISOString()` \
+instead of `{dateFrom: string}` and `dateFrom: String(params.dateFrom)`
 ```
 ./qswagger.exe <urlOrFile>.json -gen_dates
 ```
