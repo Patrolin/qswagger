@@ -315,20 +315,17 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 		append(&args, "overrides: RequestInit = {}")
 		append(&arg_names, "overrides")
 		args_string := strings.join(args[:], ", ")
-		raw_response_type_string := ": Promise<Response>"
 		response_type_string := "void"
 		response_type_json, response_type_is_json := request.response_type.(SwaggerRequestJsonBody)
 		if response_type_is_json {
 			response_type_string = print_typescript_type(response_type_json.property)
 		}
-		response_type_string = strings.join({": Promise<", response_type_string, ">"}, "")
 		// raw request
 		fmt.sbprintfln(
 			&builder,
-			"    async %v_Raw(%v)%v {{",
+			"    async %v_Raw(%v): Promise<Response> {{",
 			request_name,
 			args_string,
-			raw_response_type_string,
 		)
 		fmt.sbprintfln(&builder, "        let path = '%v';", request.path)
 		for param in request.path_params {
@@ -372,7 +369,7 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 		// typed request
 		fmt.sbprintfln(
 			&builder,
-			"    async %v(%v)%v {{",
+			"    async %v(%v): Promise<%v> {{",
 			request_name,
 			args_string,
 			response_type_string,
@@ -383,12 +380,17 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 			request_name,
 			strings.join(arg_names[:], ", "),
 		)
-		if len(response_type_string) > 0 {
-			fmt.sbprint(&builder, "        return await new runtime.JSONApiResponse(response")
-			fmt.sbprintf(&builder, ", v => v as %v", response_type_string[2:])
-			fmt.sbprintln(&builder, ").value();")
+		if response_type_string != "void" {
+			fmt.sbprintfln(
+				&builder,
+				"        return await new runtime.JSONApiResponse(response, v => v as %v).value();",
+				response_type_string,
+			)
 		} else {
-			fmt.sbprintln(&builder, "        return await new runtime.VoidApiResponse(response);")
+			fmt.sbprintfln(
+				&builder,
+				"        return await new runtime.VoidApiResponse(response).value();",
+			)
 		}
 		fmt.sbprintln(&builder, "    }")
 	}
