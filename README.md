@@ -29,3 +29,29 @@ instead of `{dateFrom: string}` and `dateFrom: String(params.dateFrom)` \
 ```
 ./qswagger.exe <urlOrFile>.json -gen_dates -date_fmt "Utils.printIsoDate(%v)"
 ```
+
+## dev
+- **Windows** \
+  - **Install Odin**
+    - Install Odin from https://odin-lang.org/ \
+  - **Build qswagger**
+    ```
+    odin build qswagger
+    ```
+- **Ubuntu 24.xx**
+  - **Install Odin** \
+    (copy paste from https://odin-lang.org/docs/install/#others-unix)
+    ```
+    sudo apt update
+    sudo apt upgrade
+    sudo apt install clang llvm make libssl-dev
+    cd ~  # wherever you want to install it
+    git clone https://github.com/odin-lang/Odin
+    cd Odin
+    git checkout dev-2025-04  # whatever version you want
+    make release-native
+    ```
+  - **Build qswagger**
+    ```
+    odin build qswagger -o qswagger
+    ```
