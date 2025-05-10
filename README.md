@@ -53,5 +53,5 @@ instead of `{dateFrom: string}` and `dateFrom: String(params.dateFrom)` \
     ```
   - **Build qswagger**
     ```
-    odin build qswagger -out:qswagger-x64
+    odin build qswagger -out:qswagger-linux-x64
     ```
