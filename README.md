@@ -2,7 +2,13 @@
 Typescript request generator for swagger
 
 ## installation
-Download `qswagger.exe` from https://github.com/Patrolin/qswagger/releases
+- **Windows** \
+  Download `qswagger.exe` from [Releases](https://github.com/Patrolin/qswagger/releases)
+- **Linux** \
+  Download `qswagger-linux-x64` from [Releases](https://github.com/Patrolin/qswagger/releases)
+  ```
+  chmod a+x qswagger-linux-x64
+  ```
 
 ## usage
 Generate apis and models
