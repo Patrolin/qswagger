@@ -21,6 +21,7 @@ main :: proc() {
 	args := os.args
 	if len(args) < 2 {
 		fmt.println("Usage: qswagger <...urlsOrFiles>")
+		fmt.println("Version: v2.3")
 		os.exit(1)
 	}
 	urls: [dynamic]string

@@ -134,7 +134,9 @@ parse_models :: proc(data: json.Object, module_prefix: string) -> ^map[string]Sw
 // print model
 print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 	sb := strings.builder_make_none()
+	// print header
 	fmt.sbprint(&sb, AUTOGEN_HEADER)
+	// print model
 	switch m in model {
 	case SwaggerModelEnum:
 		// export enum
@@ -148,11 +150,13 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 		}
 		fmt.sbprintfln(&sb, "};")
 	case SwaggerModelStruct:
-		// imports
+		// add imports
 		acc_imports: map[string]void
 		for key, property in m {
 			add_imports(&acc_imports, property)
 		}
+		delete_key(&acc_imports, name)
+		// print imports
 		for import_name in sort_keys(acc_imports) {
 			fmt.sbprintfln(&sb, "import {{%v}} from './%v'", import_name, import_name)
 		}
@@ -168,7 +172,8 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 	}
 	return strings.to_string(sb)
 }
-void :: struct {}
+void :: struct {
+}
 add_imports :: proc(acc: ^map[string]void, model: SwaggerModelProperty) {
 	switch m in model {
 	case SwaggerModelPropertyPrimitive:

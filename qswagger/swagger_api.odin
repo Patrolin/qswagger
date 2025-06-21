@@ -37,7 +37,8 @@ SwaggerResponseBody :: union {
 	SwaggerRequestNoBody,
 	SwaggerRequestJsonBody,
 }
-SwaggerRequestNoBody :: struct {}
+SwaggerRequestNoBody :: struct {
+}
 SwaggerRequestJsonBody :: struct {
 	property: SwaggerModelProperty,
 }
@@ -237,7 +238,9 @@ get_request_body_type :: proc(request: SwaggerRequest, request_name: string) -> 
 }
 print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 	builder := strings.builder_make_none()
+	// print header
 	fmt.sbprint(&builder, AUTOGEN_HEADER)
+	// add imports
 	acc_imports: map[string]void
 	for request in api {
 		request_body_json, request_body_is_json := request.request_body_type.(SwaggerRequestJsonBody)
@@ -249,11 +252,13 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 			add_imports(&acc_imports, response_body_json.property)
 		}
 	}
+	// print imports
 	for key in sort_keys(acc_imports) {
 		fmt.sbprintfln(&builder, "import {{%v}} from '../models/%v'", key, key)
 	}
 	fmt.sbprintln(&builder, "import * as runtime from '../runtime'")
 	fmt.sbprintln(&builder)
+	// print apis
 	for request in api {
 		request_name := get_request_name(request)
 		if len(request.path_params) > 0 {

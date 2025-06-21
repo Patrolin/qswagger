@@ -54,7 +54,8 @@ instead of `{dateFrom: string}` and `dateFrom: String(params.dateFrom)` \
     cd ~  # wherever you want to install it
     git clone https://github.com/odin-lang/Odin
     cd Odin
-    git checkout dev-2025-04  # whatever version you want
+    git fetch
+    git checkout dev-2025-06  # whatever version you want
     make release-native
     ```
   - **Build qswagger**
