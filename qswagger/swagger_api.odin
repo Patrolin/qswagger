@@ -243,10 +243,20 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 	// add imports
 	acc_imports: map[string]void
 	for request in api {
+		// add request.path imports
+		for param in request.path_params {
+			add_imports(&acc_imports, param.property)
+		}
+		// add request.query imports
+		for param in request.query_params {
+			add_imports(&acc_imports, param.property)
+		}
+		// add request.body imports
 		request_body_json, request_body_is_json := request.request_body_type.(SwaggerRequestJsonBody)
 		if request_body_is_json {
 			add_imports(&acc_imports, request_body_json.property)
 		}
+		// add response
 		response_body_json, response_body_is_json := request.response_type.(SwaggerRequestJsonBody)
 		if response_body_is_json {
 			add_imports(&acc_imports, response_body_json.property)
