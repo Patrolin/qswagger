@@ -172,8 +172,7 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 	}
 	return strings.to_string(sb)
 }
-void :: struct {
-}
+void :: struct {}
 add_imports :: proc(acc: ^map[string]void, model: SwaggerModelProperty) {
 	switch m in model {
 	case SwaggerModelPropertyPrimitive:
@@ -242,7 +241,7 @@ get_typescript_type :: proc(
 					case "binary":
 						type = "Blob"
 					case "date-time":
-						type = global_args.gen_dates ? "Date" : "string"
+						type = global_args.gen_dates ? global_args.date_type : "string"
 					case:
 						type = "string"
 					}

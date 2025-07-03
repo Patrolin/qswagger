@@ -9,26 +9,25 @@ import "core:strings"
 OUT_DIR :: "fetch/"
 GlobalArgs :: struct {
 	gen_dates:   bool,
+	date_type:   string,
 	date_import: string,
 	date_fmt:    string,
 }
 global_args := GlobalArgs {
 	gen_dates   = false,
+	date_type   = "Date",
 	date_import = "",
 	date_fmt    = "%v.toISOString()",
 }
 
 // TODO: throw error in typescript if required parameters are missing?
+mark_invalid_arg :: proc(args_are_invalid: ^bool, format: string, args: ..any) {
+	fmt.printfln(format, ..args)
+	args_are_invalid^ = true
+}
 main :: proc() {
 	args := os.args
-	if len(args) < 2 {
-		fmt.println("Usage: qswagger <...urlsOrFiles>")
-		fmt.println("  -gen_dates?")
-		fmt.println("  -date_import?: string")
-		fmt.println("  -date_fmt?: string")
-		fmt.println("Version: v2.3")
-		os.exit(1)
-	}
+	args_are_invalid := len(args) < 2
 	urls: [dynamic]string
 	for i := 1; i < len(args); i += 1 {
 		arg := args[i]
@@ -36,20 +35,50 @@ main :: proc() {
 			switch arg {
 			case "-gen_dates":
 				global_args.gen_dates = true
+			case "-date_type":
+				if i + 1 < len(args) {
+					global_args.date_type = args[i + 1]
+					i += 1
+				} else {
+					mark_invalid_arg(&args_are_invalid, "Missing value for -date_type?: string")
+				}
 			case "-date_import":
-				fmt.assertf(i + 1 < len(args), "Missing value for -date_import?: string")
-				global_args.date_import = args[i + 1]
-				i += 1
+				if i + 1 < len(args) {
+					new_import_line := args[i + 1]
+					if len(global_args.date_import) != 0 {
+						global_args.date_import = strings.join(
+							{global_args.date_import, new_import_line},
+							"\n",
+						)
+					} else {
+						global_args.date_import = new_import_line
+					}
+					i += 1
+				} else {
+					mark_invalid_arg(&args_are_invalid, "Missing value for -date_import?: string")
+				}
 			case "-date_fmt":
-				fmt.assertf(i + 1 < len(args), "Missing value for -date_fmt?: string")
-				global_args.date_fmt = args[i + 1]
-				i += 1
+				if i + 1 < len(args) {
+					global_args.date_fmt = args[i + 1]
+					i += 1
+				} else {
+					mark_invalid_arg(&args_are_invalid, "Missing value for -date_fmt?: string")
+				}
 			case:
-				fmt.assertf(false, "Unknown argument: %v", arg)
+				mark_invalid_arg(&args_are_invalid, "Unknown argument: %v", arg)
 			}
 		} else {
 			append(&urls, arg)
 		}
+	}
+	if args_are_invalid {
+		fmt.println("Usage: qswagger <...urlsOrFiles>")
+		fmt.println("  -gen_dates?")
+		fmt.println("  -date_type?: string")
+		fmt.println("  -date_import?: string")
+		fmt.println("  -date_fmt?: string")
+		fmt.println("Version: v2.4")
+		os.exit(1)
 	}
 	fmt.printfln("global_args, %v", global_args)
 	remove_directory_recursive(OUT_DIR)
