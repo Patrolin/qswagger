@@ -70,7 +70,6 @@ add_api_item :: proc(
 			param := param.(json.Object)
 			param_name := param["name"].(json.String)
 			property := get_swagger_property(param["schema"].(json.Object), module_prefix, {})
-			param_type: SwaggerRequestParamType
 			param_type_data := param["in"].(json.String)
 			switch param_type_data {
 			case "query":
@@ -245,33 +244,41 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 	// print header
 	fmt.sbprint(&builder, AUTOGEN_HEADER)
 	// add imports
-	acc_imports: map[string]void
+	acc_request_imports: map[string]void
+	acc_response_imports: map[string]void
 	need_date_import := false
 	for request in api {
 		// add request.path imports
 		for param in request.path_params {
-			add_imports(&acc_imports, param.property, &need_date_import)
+			add_imports(&acc_request_imports, param.property, &need_date_import)
 		}
 		// add request.query imports
 		for param in request.query_params {
-			add_imports(&acc_imports, param.property, &need_date_import)
+			add_imports(&acc_request_imports, param.property, &need_date_import)
 		}
 		// add request.body imports
 		request_body_json, request_body_is_json := request.request_body_type.(SwaggerRequestJsonBody)
 		if request_body_is_json {
-			add_imports(&acc_imports, request_body_json.property, nil)
+			add_imports(&acc_request_imports, request_body_json.property, nil)
 		}
-		// add response
+		// add response.body imports
 		response_body_json, response_body_is_json := request.response_type.(SwaggerRequestJsonBody)
 		if response_body_is_json {
-			add_imports(&acc_imports, response_body_json.property, nil)
+			add_imports(&acc_response_imports, response_body_json.property, nil)
 		}
 	}
 	// print imports
-	for key in sort_keys(acc_imports) {
-		fmt.sbprintfln(&builder, "import {{%v}} from '../models/%v'", key, key)
+	for key in sort_keys(acc_request_imports) {
+		fmt.sbprintfln(&builder, "import {{{0}}} from '../models/{0}';", key)
 	}
-	fmt.sbprintln(&builder, "import * as runtime from '../runtime'")
+	for key in sort_keys(acc_response_imports) {
+		if global_args.gen_dates {
+			fmt.sbprintfln(&builder, "import {{{0}, map_{0}}} from '../models/{0}';", key)
+		} else {
+			fmt.sbprintfln(&builder, "import {{{0}}} from '../models/{0}';", key)
+		}
+	}
+	fmt.sbprintln(&builder, "import * as runtime from '../runtime';")
 	if need_date_import && len(global_args.date_import) > 0 {
 		fmt.sbprintln(&builder, global_args.date_import)
 	}
@@ -417,11 +424,19 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 			strings.join(arg_names[:], ", "),
 		)
 		if response_type_string != "void" {
-			fmt.sbprintfln(
-				&builder,
-				"        return await new runtime.JSONApiResponse(response, v => v as %v).value();",
-				response_type_string,
-			)
+			if global_args.gen_dates {
+				fmt.sbprintfln(
+					&builder,
+					"        return await new runtime.JSONApiResponse(response, v => map_%v(v)).value();",
+					response_type_string,
+				)
+			} else {
+				fmt.sbprintfln(
+					&builder,
+					"        return await new runtime.JSONApiResponse(response, v => v as %v).value();",
+					response_type_string,
+				)
+			}
 		} else {
 			fmt.sbprintfln(
 				&builder,

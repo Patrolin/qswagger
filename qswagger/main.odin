@@ -148,7 +148,7 @@ main :: proc() {
 			os.write_entire_file(file_path, transmute([]u8)file_to_write)
 		}
 		for name in sort_keys(models^) {
-			line_to_write := fmt.tprintf("export {%v} from './%v';\n", name, name)
+			line_to_write := fmt.tprintfln("export {{{0}}} from './{0}';", name)
 			os.write(model_index_file, transmute([]u8)line_to_write)
 		}
 		for group, api in apis {
