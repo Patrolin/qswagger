@@ -2,6 +2,7 @@ package main
 import "core:encoding/json"
 import "core:fmt"
 import "core:strings"
+
 // title
 get_swagger_title :: proc(data: json.Object) -> string {
 	info := data["info"].(json.Object)
@@ -11,6 +12,7 @@ get_swagger_title :: proc(data: json.Object) -> string {
 	}
 	return strings.join({title, "_"}, "")
 }
+
 // model
 SwaggerModel :: union {
 	SwaggerModelEnum,
@@ -158,9 +160,9 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 		}
 	case SwaggerModelStruct:
 		// add imports
-		acc_imports: map[string]void
+		acc_imports: map[string]ImportType
 		for _, property in m {
-			add_imports(&acc_imports, property, &need_date_import)
+			add_imports(&acc_imports, property, .Request, &need_date_import)
 		}
 		delete_key(&acc_imports, name)
 		// print imports
@@ -195,38 +197,12 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 			} else {
 				fmt.sbprintln(&builder, "  return {")
 				fmt.sbprintln(&builder, "    ...json,")
-				for &key in sorted_keys {
+				for key in sorted_keys {
+					value := fmt.tprintf("json.%v", key)
 					property := m[key]
-
-					switch p in property {
-					case SwaggerModelPropertyAllOf:
-					case SwaggerModelPropertyDynamicArray:
-						_, is_array := p.value.(SwaggerModelPropertyDynamicArray)
-						fmt.assertf(
-							!is_array,
-							"-gen_dates currently doesn't support nested arrays",
-						)
-						reference, is_reference := p.value.(SwaggerModelPropertyReference)
-						if is_reference {
-							fmt.sbprintfln(
-								&builder,
-								"    {0}: json.{0}?.map(map_{1}),",
-								key,
-								reference.name,
-							)
-						}
-					case SwaggerModelPropertyReference:
-						fmt.sbprintfln(&builder, "    {0}: map_{1}(json.{0}),", key, p.name)
-					case SwaggerModelPropertyPrimitive:
-						if p.format == DATE_TIME_FORMAT {
-							fmt.sbprintf(&builder, "    %v: ", key)
-							fmt.sbprintf(
-								&builder,
-								global_args.date_out_fmt,
-								fmt.tprintf("json.%v", key),
-							)
-							fmt.sbprintln(&builder, ",")
-						}
+					mapped_value, needs_mapping := print_mapped_type(value, property, "any")
+					if needs_mapping {
+						fmt.sbprintfln(&builder, "    %v: %v,", key, mapped_value)
 					}
 				}
 				fmt.sbprintln(&builder, "  };")
@@ -236,10 +212,16 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 	}
 	return strings.to_string(builder)
 }
-void :: struct {}
+
+// imports
+ImportType :: enum {
+	Request  = 0,
+	Response = 1,
+}
 add_imports :: proc(
-	acc: ^map[string]void,
+	acc: ^map[string]ImportType,
 	property: SwaggerModelProperty,
+	import_type: ImportType,
 	need_date_import: ^bool,
 ) {
 	switch p in property {
@@ -251,16 +233,57 @@ add_imports :: proc(
 		}
 	case SwaggerModelPropertyAllOf:
 		for v in p.items {
-			add_imports(acc, v, nil)
+			add_imports(acc, v, import_type, nil)
 		}
 	case SwaggerModelPropertyDynamicArray:
-		add_imports(acc, p.value^, nil)
+		add_imports(acc, p.value^, import_type, nil)
 	case SwaggerModelPropertyReference:
-		acc[p.name] = {}
+		prev_value, ok := acc[p.name]
+		acc[p.name] = max(ok ? prev_value : import_type, import_type)
 	}
 }
 
 // print type
+print_mapped_type :: proc(
+	value: string,
+	property: SwaggerModelProperty,
+	type_string: string,
+) -> (
+	mapped_value: string,
+	needs_mapping: bool,
+) {
+	if global_args.gen_dates {
+		switch p in property {
+		case SwaggerModelPropertyAllOf:
+		case SwaggerModelPropertyDynamicArray:
+			builder := strings.builder_make_none()
+			// print first array
+			depth := 1
+			fmt.sbprintf(&builder, "%v?.map(", value)
+			// print nested arrays
+			_, is_array := p.value.(SwaggerModelPropertyDynamicArray)
+			value := value
+			for is_array {
+				value = fmt.tprint("v%v", depth - 1)
+				fmt.sbprintf(&builder, "%v => %v?.map(", value)
+			}
+			// print item and closing brackets
+			reference, is_reference := p.value.(SwaggerModelPropertyReference)
+			if is_reference {
+				fmt.sbprintf(&builder, "map_%v", reference.name)
+				for _ in 0 ..< depth {fmt.sbprint(&builder, ")")}
+				return strings.to_string(builder), true
+			}
+		case SwaggerModelPropertyReference:
+			return fmt.tprintf("map_{1}({0})", value, p.name), true
+		case SwaggerModelPropertyPrimitive:
+			if p.format == DATE_TIME_FORMAT {
+				return fmt.tprintf(global_args.date_out_fmt, value), true
+			}
+		}
+	}
+	return fmt.tprintf("%v as %v", value, type_string), false
+}
 print_typescript_key_type :: proc(key: string, property: SwaggerModelProperty) -> string {
 	builder := strings.builder_make_none()
 	type, _, needs_brackets, nullable, is_array, is_array_nullable := get_typescript_type(property)

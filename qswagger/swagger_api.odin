@@ -244,35 +244,33 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 	// print header
 	fmt.sbprint(&builder, AUTOGEN_HEADER)
 	// add imports
-	acc_request_imports: map[string]void
-	acc_response_imports: map[string]void
+	acc_imports: map[string]ImportType
 	need_date_import := false
 	for request in api {
 		// add request.path imports
 		for param in request.path_params {
-			add_imports(&acc_request_imports, param.property, &need_date_import)
+			add_imports(&acc_imports, param.property, .Request, &need_date_import)
 		}
 		// add request.query imports
 		for param in request.query_params {
-			add_imports(&acc_request_imports, param.property, &need_date_import)
+			add_imports(&acc_imports, param.property, .Request, &need_date_import)
 		}
 		// add request.body imports
 		request_body_json, request_body_is_json := request.request_body_type.(SwaggerRequestJsonBody)
 		if request_body_is_json {
-			add_imports(&acc_request_imports, request_body_json.property, nil)
+			add_imports(&acc_imports, request_body_json.property, .Request, nil)
 		}
 		// add response.body imports
 		response_body_json, response_body_is_json := request.response_type.(SwaggerRequestJsonBody)
 		if response_body_is_json {
-			add_imports(&acc_response_imports, response_body_json.property, nil)
+			add_imports(&acc_imports, response_body_json.property, .Response, nil)
 		}
 	}
 	// print imports
-	for key in sort_keys(acc_request_imports) {
-		fmt.sbprintfln(&builder, "import {{{0}}} from '../models/{0}';", key)
-	}
-	for key in sort_keys(acc_response_imports) {
-		if global_args.gen_dates {
+	for key in sort_keys(acc_imports) {
+		import_type := acc_imports[key]
+		need_mapping_import := import_type == .Response && global_args.gen_dates
+		if need_mapping_import {
 			fmt.sbprintfln(&builder, "import {{{0}, map_{0}}} from '../models/{0}';", key)
 		} else {
 			fmt.sbprintfln(&builder, "import {{{0}}} from '../models/{0}';", key)
@@ -424,19 +422,16 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 			strings.join(arg_names[:], ", "),
 		)
 		if response_type_string != "void" {
-			if global_args.gen_dates {
-				fmt.sbprintfln(
-					&builder,
-					"        return await new runtime.JSONApiResponse(response, v => map_%v(v)).value();",
-					response_type_string,
-				)
-			} else {
-				fmt.sbprintfln(
-					&builder,
-					"        return await new runtime.JSONApiResponse(response, v => v as %v).value();",
-					response_type_string,
-				)
-			}
+			mapped_type, _ := print_mapped_type(
+				"v",
+				response_type_json.property,
+				response_type_string,
+			)
+			fmt.sbprintfln(
+				&builder,
+				"        return await new runtime.JSONApiResponse(response, v => %v).value();",
+				mapped_type,
+			)
 		} else {
 			fmt.sbprintfln(
 				&builder,
