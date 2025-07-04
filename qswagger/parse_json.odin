@@ -35,18 +35,18 @@ json_to_string_array :: proc(data: json.Object, key: string) -> []string {
 	array, ok := data[key].(json.Array)
 	if ok {
 		for value in array {
-			sb := strings.builder_make_none()
+			builder := strings.builder_make_none()
 			#partial switch v in value {
 			case json.String:
-				{fmt.sbprintf(&sb, "'%v'", v)}
+				{fmt.sbprintf(&builder, "'%v'", v)}
 			case json.Integer:
-				{fmt.sbprintf(&sb, "%v", v)}
+				{fmt.sbprintf(&builder, "%v", v)}
 			case json.Null:
-				{fmt.sbprintf(&sb, "null")}
+				{fmt.sbprintf(&builder, "null")}
 			case:
 				fmt.assertf(false, "Unsupported enum value: %v", v)
 			}
-			append(&acc, strings.to_string(sb))
+			append(&acc, strings.to_string(builder))
 		}
 	}
 	return acc[:]

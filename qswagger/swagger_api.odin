@@ -4,7 +4,10 @@ import "core:fmt"
 import "core:slice"
 import "core:strings"
 
-// api
+// constants
+DATE_TIME_FORMAT :: "date-time"
+
+// types
 SwaggerApi :: [dynamic]SwaggerRequest
 SwaggerRequest :: struct {
 	path:              string,
@@ -37,14 +40,15 @@ SwaggerResponseBody :: union {
 	SwaggerRequestNoBody,
 	SwaggerRequestJsonBody,
 }
-SwaggerRequestNoBody :: struct {
-}
+SwaggerRequestNoBody :: struct {}
 SwaggerRequestJsonBody :: struct {
 	property: SwaggerModelProperty,
 }
 SwaggerRequestMultipartBody :: struct {
 	model: SwaggerModelStruct,
 }
+
+// procedures
 add_api_item :: proc(
 	acc_apis: ^map[string]SwaggerApi,
 	type: SwaggerRequestType,
@@ -242,24 +246,25 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 	fmt.sbprint(&builder, AUTOGEN_HEADER)
 	// add imports
 	acc_imports: map[string]void
+	need_date_import := false
 	for request in api {
 		// add request.path imports
 		for param in request.path_params {
-			add_imports(&acc_imports, param.property)
+			add_imports(&acc_imports, param.property, &need_date_import)
 		}
 		// add request.query imports
 		for param in request.query_params {
-			add_imports(&acc_imports, param.property)
+			add_imports(&acc_imports, param.property, &need_date_import)
 		}
 		// add request.body imports
 		request_body_json, request_body_is_json := request.request_body_type.(SwaggerRequestJsonBody)
 		if request_body_is_json {
-			add_imports(&acc_imports, request_body_json.property)
+			add_imports(&acc_imports, request_body_json.property, nil)
 		}
 		// add response
 		response_body_json, response_body_is_json := request.response_type.(SwaggerRequestJsonBody)
 		if response_body_is_json {
-			add_imports(&acc_imports, response_body_json.property)
+			add_imports(&acc_imports, response_body_json.property, nil)
 		}
 	}
 	// print imports
@@ -267,18 +272,21 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 		fmt.sbprintfln(&builder, "import {{%v}} from '../models/%v'", key, key)
 	}
 	fmt.sbprintln(&builder, "import * as runtime from '../runtime'")
-	// print date import
-	need_date_import := false
+	if need_date_import {
+		fmt.sbprintln(&builder, global_args.date_import)
+	}
+	// print date_in_import
+	need_date_in_import := false
 	for request in api {
 		for param in request.path_params {
-			if need_date_fmt(param) {need_date_import = true}
+			if need_date_fmt(param) {need_date_in_import = true}
 		}
 		for param in request.query_params {
-			if need_date_fmt(param) {need_date_import = true}
+			if need_date_fmt(param) {need_date_in_import = true}
 		}
 	}
-	if need_date_import && len(global_args.date_import) > 0 {
-		fmt.sbprintln(&builder, global_args.date_import)
+	if need_date_in_import && len(global_args.date_in_import) > 0 {
+		fmt.sbprintln(&builder, global_args.date_in_import)
 	}
 	fmt.sbprintln(&builder)
 	// print apis
@@ -427,15 +435,15 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 }
 need_date_fmt :: proc(param: SwaggerRequestParam) -> bool {
 	primitive, is_primitive := param.property.(SwaggerModelPropertyPrimitive)
-	return global_args.gen_dates && is_primitive && primitive.format == "date-time"
+	return global_args.gen_dates && is_primitive && primitive.format == DATE_TIME_FORMAT
 }
 format_typescript_param :: proc(param: SwaggerRequestParam, prefix: string) -> string {
-	sb := strings.builder_make_none()
+	builder := strings.builder_make_none()
 	prefixed_param := strings.join({prefix, param.name}, "")
 	if need_date_fmt(param) {
-		fmt.sbprintf(&sb, global_args.date_fmt, prefixed_param)
+		fmt.sbprintf(&builder, global_args.date_in_fmt, prefixed_param)
 	} else {
-		fmt.sbprintf(&sb, "String(%v)", prefixed_param)
+		fmt.sbprintf(&builder, "String(%v)", prefixed_param)
 	}
-	return strings.to_string(sb)
+	return strings.to_string(builder)
 }

@@ -8,16 +8,22 @@ import "core:strings"
 
 OUT_DIR :: "fetch/"
 GlobalArgs :: struct {
-	gen_dates:   bool,
-	date_type:   string,
-	date_import: string,
-	date_fmt:    string,
+	gen_dates:       bool,
+	date_type:       string,
+	date_import:     string,
+	date_in_fmt:     string,
+	date_in_import:  string,
+	date_out_fmt:    string,
+	date_out_import: string,
 }
 global_args := GlobalArgs {
-	gen_dates   = false,
-	date_type   = "Date",
-	date_import = "",
-	date_fmt    = "%v.toISOString()",
+	gen_dates       = false,
+	date_type       = "Date",
+	date_import     = "",
+	date_in_fmt     = "%v.toISOString()",
+	date_in_import  = "",
+	date_out_fmt    = "{0} == null ? {0} : new Date({0})",
+	date_out_import = "",
 }
 
 // TODO: throw error in typescript if required parameters are missing?
@@ -44,25 +50,44 @@ main :: proc() {
 				}
 			case "-date_import":
 				if i + 1 < len(args) {
-					new_import_line := args[i + 1]
-					if len(global_args.date_import) != 0 {
-						global_args.date_import = strings.join(
-							{global_args.date_import, new_import_line},
-							"\n",
-						)
-					} else {
-						global_args.date_import = new_import_line
-					}
+					global_args.date_import = args[i + 1]
 					i += 1
 				} else {
 					mark_invalid_arg(&args_are_invalid, "Missing value for -date_import?: string")
 				}
-			case "-date_fmt":
+			case "-date_in_fmt":
 				if i + 1 < len(args) {
-					global_args.date_fmt = args[i + 1]
+					global_args.date_in_fmt = args[i + 1]
 					i += 1
 				} else {
-					mark_invalid_arg(&args_are_invalid, "Missing value for -date_fmt?: string")
+					mark_invalid_arg(&args_are_invalid, "Missing value for -date_in_fmt?: string")
+				}
+			case "-date_in_import":
+				if i + 1 < len(args) {
+					global_args.date_in_import = args[i + 1]
+					i += 1
+				} else {
+					mark_invalid_arg(
+						&args_are_invalid,
+						"Missing value for -date_in_import?: string",
+					)
+				}
+			case "-date_out_fmt":
+				if i + 1 < len(args) {
+					global_args.date_out_fmt = args[i + 1]
+					i += 1
+				} else {
+					mark_invalid_arg(&args_are_invalid, "Missing value for -date_out_fmt?: string")
+				}
+			case "-date_out_import":
+				if i + 1 < len(args) {
+					global_args.date_out_import = args[i + 1]
+					i += 1
+				} else {
+					mark_invalid_arg(
+						&args_are_invalid,
+						"Missing value for -date_out_import?: string",
+					)
 				}
 			case:
 				mark_invalid_arg(&args_are_invalid, "Unknown argument: %v", arg)
@@ -75,8 +100,10 @@ main :: proc() {
 		fmt.println("Usage: qswagger <...urlsOrFiles>")
 		fmt.println("  -gen_dates?")
 		fmt.println("  -date_type?: string")
-		fmt.println("  -date_import?: string")
-		fmt.println("  -date_fmt?: string")
+		fmt.println("  -date_in_fmt?: string")
+		fmt.println("  -date_in_import?: string")
+		fmt.println("  -date_out_fmt?: string")
+		fmt.println("  -date_out_import?: string")
 		fmt.println("Version: v2.4")
 		os.exit(1)
 	}
@@ -116,12 +143,12 @@ main :: proc() {
 			file_to_write := print_typescript_model(name, model)
 			//fmt.printfln("-- %v", name)
 			//fmt.println(file_to_write)
-			file_path := strings.join({OUT_DIR, "models/", name, ".ts"}, "")
+			file_path := fmt.tprintf("%vmodels/%v.ts", OUT_DIR, name)
 			fmt.printfln("- %v", file_path)
 			os.write_entire_file(file_path, transmute([]u8)file_to_write)
 		}
 		for name in sort_keys(models^) {
-			line_to_write := strings.join({"export * from './", name, "';\n"}, "")
+			line_to_write := fmt.tprintf("export {%v} from './%v';\n", name, name)
 			os.write(model_index_file, transmute([]u8)line_to_write)
 		}
 		for group, api in apis {
