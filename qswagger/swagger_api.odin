@@ -272,7 +272,7 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 		fmt.sbprintfln(&builder, "import {{%v}} from '../models/%v'", key, key)
 	}
 	fmt.sbprintln(&builder, "import * as runtime from '../runtime'")
-	if need_date_import {
+	if need_date_import && len(global_args.date_import) > 0 {
 		fmt.sbprintln(&builder, global_args.date_import)
 	}
 	// print date_in_import

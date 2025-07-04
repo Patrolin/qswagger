@@ -162,7 +162,10 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 			fmt.sbprintfln(&builder, "import {{%v}} from './%v'", import_name, import_name)
 		}
 		if need_date_import {
-			fmt.sbprintln(&builder, global_args.date_import)
+			if len(global_args.date_import) > 0 {fmt.sbprintln(&builder, global_args.date_import)}
+			if len(global_args.date_out_import) > 0 {
+				fmt.sbprintln(&builder, global_args.date_out_import)
+			}
 		}
 		if len(acc_imports) > 0 || need_date_import {fmt.sbprintln(&builder)}
 		// export type
@@ -216,7 +219,7 @@ add_imports :: proc(
 	case SwaggerModelPropertyPrimitive:
 		if p.format == DATE_TIME_FORMAT {
 			if need_date_import != nil {
-				need_date_import^ = len(global_args.date_import) > 0
+				need_date_import^ = true
 			}
 		}
 	case SwaggerModelPropertyAllOf:
