@@ -386,7 +386,7 @@ print_typescript_api :: proc(group: string, api: SwaggerApi) -> string {
 		if v, body_is_multipart := request.request_body_type.(SwaggerRequestMultipartBody);
 		   body_is_multipart {
 			fmt.sbprintln(&builder, "        const formData = new FormData();")
-			for k in v.model {
+			for k in sort_keys(v.model) {
 				fmt.sbprintfln(&builder, "        formData.append('%v', body.%v);", k, k)
 			}
 		}
