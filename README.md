@@ -32,7 +32,7 @@ Generate apis and models \
 with `{dateFrom: Date}` and `dateFrom: <date_fmt>` \
 instead of `{dateFrom: string}` and `dateFrom: String(params.dateFrom)`
 ```
-./qswagger.exe <urlOrFile>.json -gen_dates -date_out_fmt "import { Utils } from '../../utils';" -date_out_import "Utils.printIsoDate(%v)"
+./qswagger.exe <urlOrFile>.json -gen_dates -date_out_import "import { Utils } from '../../utils';" -date_out_fmt "Utils.printIsoDate(%v)"
 ```
 
 ## dev

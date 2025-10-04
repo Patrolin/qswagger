@@ -105,7 +105,7 @@ main :: proc() {
 		fmt.println("  -date_in_import?: string")
 		fmt.println("  -date_out_fmt?: string")
 		fmt.println("  -date_out_import?: string")
-		fmt.println("Version: v2.4.2")
+		fmt.println("Version: v2.4.3")
 		os.exit(1)
 	}
 	fmt.printfln("global_args, %v", global_args)
@@ -149,7 +149,8 @@ main :: proc() {
 			os.write_entire_file(file_path, transmute([]u8)file_to_write)
 		}
 		for name in sort_keys(models^) {
-			line_to_write := fmt.tprintfln("export {{{0}}} from './{0}';", name)
+			/* NOTE: javascript bundlers are bad and don't understand export by name for types... */
+			line_to_write := fmt.tprintfln("export * from './{0}';", name)
 			os.write(model_index_file, transmute([]u8)line_to_write)
 		}
 		for group, api in apis {
