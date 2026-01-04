@@ -41,7 +41,7 @@ instead of `{dateFrom: string}` and `dateFrom: String(params.dateFrom)`
     - Install Odin from https://odin-lang.org/ \
   - **Build qswagger**
     ```
-    odin build qswagger
+    odin build qswagger -o:speed
     ```
 - **Ubuntu 24.xx**
   - **Install Odin** \
@@ -59,5 +59,5 @@ instead of `{dateFrom: string}` and `dateFrom: String(params.dateFrom)`
     ```
   - **Build qswagger**
     ```
-    odin build qswagger -out:qswagger-linux-x64
+    odin build qswagger -out:qswagger-linux-x64 -o:speed
     ```
