@@ -19,7 +19,14 @@ read_file_json :: proc(path: string) -> json.Object {
 fetch_json :: proc(url: string) -> json.Object {
 	res, err := client.get(url)
 	defer client.response_destroy(&res)
-	fmt.assertf(err == nil, "Request failed: %s", err)
+	if (!(err == nil && res.status == .OK)) {
+		if (err == nil) {
+			fmt.printf("Request failed: %v %s", int(res.status), res.status)
+		} else {
+			fmt.printf("Request failed: %v %s", int(res.status), err)
+		}
+		os.exit(1)
+	}
 	body, allocation, body_err := client.response_body(&res)
 	fmt.assertf(body_err == nil, "Body error: %s", body_err)
 	defer client.body_destroy(body, allocation)
