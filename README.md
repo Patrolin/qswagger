@@ -61,3 +61,7 @@ instead of `{dateFrom: string}` and `dateFrom: String(params.dateFrom)`
     ```
     odin build qswagger -out:qswagger-linux-x64 -o:speed
     ```
+
+### Release
+1) Update version string in `qswagger/main.odin`.
+2) Publish release on github
