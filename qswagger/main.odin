@@ -105,7 +105,7 @@ main :: proc() {
 		fmt.println("  -date_in_import?: string")
 		fmt.println("  -date_out_fmt?: string")
 		fmt.println("  -date_out_import?: string")
-		fmt.println("Version: v2.4.3")
+		fmt.println("Version: v2.4.5")
 		os.exit(1)
 	}
 	fmt.printfln("global_args, %v", global_args)
@@ -183,7 +183,7 @@ remove_directory_recursive :: proc(file_path: string) {
 	os.remove_directory(file_path)
 }
 open_index_file_for_writing :: proc(file_path: string) -> os.Handle {
-	file, file_error := os.open(file_path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0)
+	file, file_error := os.open(file_path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0o644)
 	fmt.assertf(file_error == nil, "Couldn't open %v file: %v", file_path, file_error)
 	os.write(file, transmute([]u8)AUTOGEN_HEADER)
 	return file
