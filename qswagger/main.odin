@@ -8,22 +8,24 @@ import "core:strings"
 
 OUT_DIR :: "fetch/"
 GlobalArgs :: struct {
-	gen_dates:       bool,
-	date_type:       string,
-	date_import:     string,
-	date_in_fmt:     string,
-	date_in_import:  string,
-	date_out_fmt:    string,
-	date_out_import: string,
+	gen_dates:            bool,
+	date_type:            string,
+	date_import:          string,
+	date_in_fmt:          string,
+	date_in_import:       string,
+	date_out_fmt:         string,
+	date_out_import:      string,
+	array_item_null_type: string,
 }
 global_args := GlobalArgs {
-	gen_dates       = false,
-	date_type       = "Date",
-	date_import     = "",
-	date_in_fmt     = "%v.toISOString()",
-	date_in_import  = "",
-	date_out_fmt    = "{0} == null ? {0} : new Date({0})",
-	date_out_import = "",
+	gen_dates            = false,
+	date_type            = "Date",
+	date_import          = "",
+	date_in_fmt          = "%v.toISOString()",
+	date_in_import       = "",
+	date_out_fmt         = "{0} == null ? {0} : new Date({0})",
+	date_out_import      = "",
+	array_item_null_type = "null",
 }
 
 // TODO: throw error in typescript if required parameters are missing?
@@ -89,6 +91,16 @@ main :: proc() {
 						"Missing value for -date_out_import?: string",
 					)
 				}
+			case "-array_item_null_type":
+				if i + 1 < len(args) {
+					global_args.array_item_null_type = args[i + 1]
+					i += 1
+				} else {
+					mark_invalid_arg(
+						&args_are_invalid,
+						"Missing value for -array_item_null_type?: string",
+					)
+				}
 			case:
 				mark_invalid_arg(&args_are_invalid, "Unknown argument: %v", arg)
 			}
@@ -105,7 +117,8 @@ main :: proc() {
 		fmt.println("  -date_in_import?: string")
 		fmt.println("  -date_out_fmt?: string")
 		fmt.println("  -date_out_import?: string")
-		fmt.println("Version: v2.4.5")
+		fmt.println("  -array_item_null_type?: string")
+		fmt.println("Version: v2.5.0")
 		os.exit(1)
 	}
 	fmt.printfln("global_args, %v", global_args)

@@ -292,7 +292,10 @@ print_typescript_key_type :: proc(key: string, property: SwaggerModelProperty) -
 	fmt.sbprintf(&builder, has_question_mark_colon ? "?: " : ": ")
 	if needs_brackets && is_array {fmt.sbprint(&builder, "(")}
 	fmt.sbprint(&builder, type)
-	if is_array && nullable {fmt.sbprint(&builder, " | undefined")}
+	if is_array && nullable {
+		array_item_null_type := global_args.array_item_null_type
+		fmt.sbprintf(&builder, " | %v", array_item_null_type)
+	}
 	if needs_brackets && is_array {fmt.sbprint(&builder, ")")}
 	if is_array {fmt.sbprint(&builder, "[]")}
 	if is_array_nullable {fmt.sbprint(&builder, " | undefined")}
@@ -303,7 +306,10 @@ print_typescript_type :: proc(property: SwaggerModelProperty) -> string {
 	type, _, needs_brackets, nullable, is_array, is_array_nullable := get_typescript_type(property)
 	if needs_brackets && is_array {fmt.sbprint(&builder, "(")}
 	fmt.sbprint(&builder, type)
-	if is_array && nullable {fmt.sbprint(&builder, " | undefined")}
+	if is_array && nullable {
+		array_item_null_type := global_args.array_item_null_type
+		fmt.sbprintf(&builder, " | %v", array_item_null_type)
+	}
 	if needs_brackets && is_array {fmt.sbprint(&builder, ")")}
 	if is_array {fmt.sbprint(&builder, "[]")}
 	if is_array_nullable || (!is_array && nullable) {fmt.sbprint(&builder, " | undefined")}
