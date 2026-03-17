@@ -3,6 +3,7 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:slice"
 import "core:strings"
+import "core:unicode"
 
 // constants
 DATE_TIME_FORMAT :: "date-time"
@@ -57,8 +58,9 @@ add_api_item :: proc(
 	module_prefix: string,
 ) {
 	groups := value["tags"].(json.Array)
-	group := kebab_case_to_upper_camel_case(
+	group := kebab_case_to_camel_case(
 		strings.join({module_prefix, groups[0].(json.String)}, ""),
+		true,
 	)
 	if !(group in acc_apis) {
 		acc_apis[group] = new([dynamic]SwaggerRequest)^
@@ -219,14 +221,28 @@ get_request_name :: proc(request: SwaggerRequest) -> string {
 	path := request.path
 	start := strings.index(path[1:], "/") + 1
 	start += strings.index(path[start:], "/") + 1
-	request_name, was_allocation := path[start:], false
-	request_name, was_allocation = strings.replace_all(request_name, "/{", "_")
-	request_name, was_allocation = strings.replace_all(request_name, "/", "")
-	request_name, was_allocation = strings.replace_all(request_name, "}", "_")
-	request_name = strings.join(
-		{request_name, get_request_type_name_capitalized(request.type)},
-		"_",
-	)
+	builder := strings.builder_make_none()
+	was_slash := false
+	for c in path[start:] {
+		if c == '/' {
+			was_slash = true
+			continue
+		} else if c == '{' {
+			if was_slash {fmt.sbprint(&builder, '_')}
+		} else if c == '}' {
+			/* noop */
+		} else if c == '-' {
+			fmt.sbprint(&builder, '_')
+		} else {
+			if was_slash {fmt.sbprint(&builder, unicode.to_upper(c))}
+			else {fmt.sbprint(&builder, c)}
+		}
+		was_slash = false
+	}
+	fmt.sbprint(&builder, '_')
+	fmt.sbprint(&builder, get_request_type_name_capitalized(request.type))
+	request_name := strings.to_string(builder)
+	was_allocation: bool
 	request_name, was_allocation = strings.replace_all(request_name, "__", "_")
 	return strings.trim_suffix(request_name, "_")
 }

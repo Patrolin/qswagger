@@ -9,19 +9,28 @@ sort_keys :: proc(items: map[$K]$V) -> []K {
 	slice.sort(keys)
 	return keys
 }
-kebab_case_to_upper_camel_case :: proc(s: string) -> string {
+kebab_case_to_camel_case :: proc(s: string, start_upper_case: bool) -> string {
 	builder := strings.builder_make_none()
-	next_is_uppercase := true
+	was_dash := start_upper_case
 	for c in s {
 		if c == '-' {
-			next_is_uppercase = true
+			was_dash = true
+			continue
 		} else {
-			if next_is_uppercase {
-				fmt.sbprint(&builder, unicode.to_upper(c))
-			} else {
-				fmt.sbprint(&builder, c)
-			}
-			next_is_uppercase = false
+			if was_dash {fmt.sbprint(&builder, unicode.to_upper(c))}
+			else {fmt.sbprint(&builder, c)}
+		}
+		was_dash = false
+	}
+	return strings.to_string(builder)
+}
+kebab_case_to_snake_case :: proc(s: string) -> string {
+	builder := strings.builder_make_none()
+	for c in s {
+		if c == '-' {
+			fmt.sbprint(&builder, '_')
+		} else {
+			fmt.sbprint(&builder, c)
 		}
 	}
 	return strings.to_string(builder)
