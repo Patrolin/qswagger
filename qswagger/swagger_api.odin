@@ -57,7 +57,9 @@ add_api_item :: proc(
 	module_prefix: string,
 ) {
 	groups := value["tags"].(json.Array)
-	group := strings.join({module_prefix, groups[0].(json.String)}, "")
+	group := kebab_case_to_upper_camel_case(
+		strings.join({module_prefix, groups[0].(json.String)}, ""),
+	)
 	if !(group in acc_apis) {
 		acc_apis[group] = new([dynamic]SwaggerRequest)^
 	}

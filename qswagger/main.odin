@@ -118,7 +118,7 @@ main :: proc() {
 		fmt.println("  -date_out_fmt?: string")
 		fmt.println("  -date_out_import?: string")
 		fmt.println("  -array_item_null_type?: string")
-		fmt.println("Version: v2.5.0")
+		fmt.println("Version: v2.5.1")
 		os.exit(1)
 	}
 	fmt.printfln("global_args, %v", global_args)
@@ -126,10 +126,18 @@ main :: proc() {
 	os.make_directory(OUT_DIR)
 	// index.ts
 	swagger_index := print_swagger_index()
-	os.write_entire_file(strings.join({OUT_DIR, "index.ts"}, ""), transmute([]u8)swagger_index)
+	error := os.write_entire_file(
+		strings.join({OUT_DIR, "index.ts"}, ""),
+		transmute([]u8)swagger_index,
+	)
+	fmt.assertf(error == os.General_Error.None, "error: %v", error)
 	// runtime.ts
 	swagger_runtime := print_swagger_runtime()
-	os.write_entire_file(strings.join({OUT_DIR, "runtime.ts"}, ""), transmute([]u8)swagger_runtime)
+	error = os.write_entire_file(
+		strings.join({OUT_DIR, "runtime.ts"}, ""),
+		transmute([]u8)swagger_runtime,
+	)
+	fmt.assertf(error == os.General_Error.None, "error: %v", error)
 	// model, api
 	os.make_directory(strings.join({OUT_DIR, "models"}, ""))
 	os.make_directory(strings.join({OUT_DIR, "apis"}, ""))
@@ -159,7 +167,8 @@ main :: proc() {
 			//fmt.println(file_to_write)
 			file_path := fmt.tprintf("%vmodels/%v.ts", OUT_DIR, name)
 			fmt.printfln("- %v", file_path)
-			os.write_entire_file(file_path, transmute([]u8)file_to_write)
+			error := os.write_entire_file(file_path, transmute([]u8)file_to_write)
+			fmt.assertf(error == os.General_Error.None, "error: %v", error)
 		}
 		for name in sort_keys(models^) {
 			/* NOTE: javascript bundlers are bad and don't understand export by name for types... */
@@ -168,11 +177,12 @@ main :: proc() {
 		}
 		for group, api in apis {
 			file_to_write := print_typescript_api(group, api)
-			//fmt.printfln("-- %v", name)
+			//fmt.printfln("-- %v", group)
 			//fmt.printfln("%v", file_to_write)
 			file_path := strings.join({OUT_DIR, "apis/", group, "Api", ".ts"}, "")
 			fmt.printfln("- %v", file_path)
-			os.write_entire_file(file_path, transmute([]u8)file_to_write)
+			error := os.write_entire_file(file_path, transmute([]u8)file_to_write)
+			fmt.assertf(error == os.General_Error.None, "error: %v", error)
 		}
 		for group in sort_keys(apis^) {
 			line_to_write := strings.join({"export * from './", group, "Api';\n"}, "")
@@ -180,24 +190,21 @@ main :: proc() {
 		}
 	}
 }
-remove_directory_recursive :: proc(file_path: string) {
-	callback :: proc(
-		info: os.File_Info,
-		in_err: os.Error,
-		user_data: rawptr,
-	) -> (
-		err: os.Error,
-		skip_dir: bool,
-	) {
-		if !info.is_dir {return os.remove(info.fullpath), false}
-		return nil, false
+remove_directory_recursive :: proc(dir_path: string) {
+	assert(len(dir_path) > 4) /* NOTE: don't delete the whole system */
+	/* walker := os.walker_create(dir_path)
+	defer os.walker_destroy(&walker)
+	for info in os.walker_walk(&walker) {
+		if info.type != .Directory {
+			_ = os.remove(info.fullpath)
+		}
 	}
-	filepath.walk(file_path, callback, nil)
-	os.remove_directory(file_path)
+	_ = os.remove(dir_path) */
+	os.remove_all(dir_path)
 }
-open_index_file_for_writing :: proc(file_path: string) -> os.Handle {
-	file, file_error := os.open(file_path, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, 0o644)
-	fmt.assertf(file_error == nil, "Couldn't open %v file: %v", file_path, file_error)
+open_index_file_for_writing :: proc(file_path: string) -> ^os.File {
+	file, error := os.open(file_path, {.Create, .Trunc, .Write})
+	fmt.assertf(error == nil, "Couldn't open %v file: %v", file_path, error)
 	os.write(file, transmute([]u8)AUTOGEN_HEADER)
 	return file
 }

@@ -10,8 +10,8 @@ _parse_json :: proc(bytes: []u8) -> json.Object {
 	return data.(json.Object)
 }
 read_file_json :: proc(path: string) -> json.Object {
-	file_data, ok := os.read_entire_file_from_filename(path)
-	fmt.assertf(ok, "Couldn't read file '%v'", path)
+	file_data, error := os.read_entire_file(path, context.allocator)
+	fmt.assertf(error == os.General_Error.None, "Couldn't read file '%v'", path)
 	data := _parse_json(file_data)
 	free(raw_data(file_data))
 	return data
