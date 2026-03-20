@@ -230,7 +230,7 @@ get_request_name :: proc(request: SwaggerRequest) -> string {
 		} else if c == '{' {
 			if was_slash {fmt.sbprint(&builder, '_')}
 		} else if c == '}' {
-			/* noop */
+			fmt.sbprint(&builder, '_')
 		} else if c == '-' {
 			fmt.sbprint(&builder, '_')
 		} else {
