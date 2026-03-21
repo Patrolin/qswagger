@@ -74,9 +74,6 @@ add_api_item :: proc(
 			param := param.(json.Object)
 			param_name := param["name"].(json.String)
 			param_required := json_get_boolean(param, "required", true)
-			if param_required == false {
-				fmt.printfln("param_name: %v", param_name)
-			}
 			property := get_swagger_property(
 				param["schema"].(json.Object),
 				module_prefix,
