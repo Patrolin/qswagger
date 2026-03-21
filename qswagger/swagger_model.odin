@@ -51,7 +51,9 @@ get_swagger_property :: proc(
 	module_prefix: string,
 	_debug_name: []string,
 	loc := #caller_location,
+	optional := false,
 ) -> SwaggerModelProperty {
+	nullable := json_get_boolean(property, "nullable") || optional
 	ref_key, has_ref := property["$ref"].(json.String)
 	if has_ref {
 		last_slash := strings.last_index(ref_key, "/")
@@ -67,7 +69,6 @@ get_swagger_property :: proc(
 				get_swagger_property(item.(json.Object), module_prefix, _debug_name, loc = loc),
 			)
 		}
-		nullable := json_get_boolean(property, "nullable")
 		return SwaggerModelPropertyAllOf{items[:], nullable}
 	}
 	type, has_type := property["type"].(json.String)
@@ -80,14 +81,13 @@ get_swagger_property :: proc(
 				_debug_name,
 				loc = loc,
 			)
-			nullable := json_get_boolean(property, "nullable")
 			return SwaggerModelPropertyDynamicArray{array_value, nullable}
 		} else {
 			return SwaggerModelPropertyPrimitive {
 				enum_ = json_to_string_array(property, "enum"),
 				format = json_get_string(property, "format"),
 				type = json_get_string(property, "type"),
-				nullable = json_get_boolean(property, "nullable"),
+				nullable = nullable,
 			}
 		}
 	} else {
@@ -95,7 +95,7 @@ get_swagger_property :: proc(
 		return SwaggerModelPropertyPrimitive {
 			format = json_get_string(property, "format"),
 			type = "any",
-			nullable = json_get_boolean(property, "nullable"),
+			nullable = nullable,
 		}
 	}
 	builder := strings.builder_make_none()

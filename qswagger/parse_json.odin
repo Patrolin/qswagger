@@ -3,13 +3,13 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:strings"
 
-json_get_boolean :: proc(data: json.Object, key: string) -> bool {
+json_get_boolean :: proc(data: json.Object, key: string, default_value := false) -> bool {
 	value := data[key]
 	#partial switch v in value {
 	case json.Boolean:
 		{return v}
 	case:
-		{return false}
+		{return default_value}
 	}
 }
 json_get_string :: proc(data: json.Object, key: string) -> string {

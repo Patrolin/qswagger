@@ -73,7 +73,16 @@ add_api_item :: proc(
 		for param in params_data {
 			param := param.(json.Object)
 			param_name := param["name"].(json.String)
-			property := get_swagger_property(param["schema"].(json.Object), module_prefix, {})
+			param_required := json_get_boolean(param, "required", true)
+			if param_required == false {
+				fmt.printfln("param_name: %v", param_name)
+			}
+			property := get_swagger_property(
+				param["schema"].(json.Object),
+				module_prefix,
+				{},
+				optional = !param_required,
+			)
 			param_type_data := param["in"].(json.String)
 			switch param_type_data {
 			case "query":
