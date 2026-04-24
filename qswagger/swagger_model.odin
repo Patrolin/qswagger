@@ -122,9 +122,12 @@ parse_models :: proc(data: json.Object, module_prefix: string) -> ^map[string]Sw
 			type = value["type"].(json.String)
 			fmt.assertf(type == "object", "Uknown model type: %v %v", type, name)
 			swagger_model: SwaggerModelStruct
-			for key, _property in value["properties"].(json.Object) {
-				property := _property.(json.Object)
-				swagger_model[key] = get_swagger_property(property, module_prefix, {name, key})
+			object_properties, object_properties_ok := value["properties"].(json.Object)
+			if object_properties_ok { /* NOTE: empty properties is given as missing... */
+				for key, _property in object_properties {
+					property := _property.(json.Object)
+					swagger_model[key] = get_swagger_property(property, module_prefix, {name, key})
+				}
 			}
 			acc_models[name] = swagger_model
 			//fmt.printfln("object %v", name)

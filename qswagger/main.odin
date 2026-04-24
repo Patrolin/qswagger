@@ -118,7 +118,7 @@ main :: proc() {
 		fmt.println("  -date_out_fmt?: string")
 		fmt.println("  -date_out_import?: string")
 		fmt.println("  -array_item_null_type?: string")
-		fmt.println("Version: v2.5.4")
+		fmt.println("Version: v2.5.5")
 		os.exit(1)
 	}
 	fmt.printfln("global_args, %v", global_args)
