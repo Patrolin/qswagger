@@ -184,33 +184,37 @@ print_typescript_model :: proc(name: string, model: SwaggerModel) -> string {
 		}
 		if len(acc_imports) > 0 || need_date_import {fmt.sbprintln(&builder)}
 		// export type
-		fmt.sbprintfln(&builder, "export type %v = {{", name)
-		sorted_keys := sort_keys(m)
-		for key in sorted_keys {
-			property := m[key]
-			type_def := print_typescript_key_type(key, property)
-			fmt.sbprintfln(&builder, "    %v;", type_def)
-		}
-		fmt.sbprintln(&builder, "};")
-		// export date mapping
-		if global_args.gen_dates {
-			fmt.sbprintfln(&builder, "export function map_{0}(json: any): {0} {{", name)
-			if !need_date_import {
-				fmt.sbprintln(&builder, "  return json;")
-			} else {
-				fmt.sbprintln(&builder, "  return {")
-				fmt.sbprintln(&builder, "    ...json,")
-				for key in sorted_keys {
-					value := fmt.tprintf("json.%v", key)
-					property := m[key]
-					mapped_value, needs_mapping := print_mapped_type(value, property, "any")
-					if needs_mapping {
-						fmt.sbprintfln(&builder, "    %v: %v,", key, mapped_value)
-					}
-				}
-				fmt.sbprintln(&builder, "  };")
+		if len(m) == 0 {
+			fmt.sbprintfln(&builder, "export type %v = Record<string, never>;", name)
+		} else {
+			fmt.sbprintfln(&builder, "export type %v = {{", name)
+			sorted_keys := sort_keys(m)
+			for key in sorted_keys {
+				property := m[key]
+				type_def := print_typescript_key_type(key, property)
+				fmt.sbprintfln(&builder, "    %v;", type_def)
 			}
-			fmt.sbprintln(&builder, "}")
+			fmt.sbprintln(&builder, "};")
+			// export date mapping
+			if global_args.gen_dates {
+				fmt.sbprintfln(&builder, "export function map_{0}(json: any): {0} {{", name)
+				if !need_date_import {
+					fmt.sbprintln(&builder, "  return json;")
+				} else {
+					fmt.sbprintln(&builder, "  return {")
+					fmt.sbprintln(&builder, "    ...json,")
+					for key in sorted_keys {
+						value := fmt.tprintf("json.%v", key)
+						property := m[key]
+						mapped_value, needs_mapping := print_mapped_type(value, property, "any")
+						if needs_mapping {
+							fmt.sbprintfln(&builder, "    %v: %v,", key, mapped_value)
+						}
+					}
+					fmt.sbprintln(&builder, "  };")
+				}
+				fmt.sbprintln(&builder, "}")
+			}
 		}
 	}
 	return strings.to_string(builder)
