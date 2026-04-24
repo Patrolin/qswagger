@@ -1,9 +1,8 @@
-// odin run qswagger -- <...urls>
+// ice run <...urls>
 package main
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
-import "core:path/filepath"
 import "core:strings"
 
 OUT_DIR :: "fetch/"
@@ -167,8 +166,8 @@ main :: proc() {
 			//fmt.println(file_to_write)
 			file_path := fmt.tprintf("%vmodels/%v.ts", OUT_DIR, name)
 			fmt.printfln("- %v", file_path)
-			error := os.write_entire_file(file_path, transmute([]u8)file_to_write)
-			fmt.assertf(error == os.General_Error.None, "error: %v", error)
+			model_file_error := os.write_entire_file(file_path, transmute([]u8)file_to_write)
+			fmt.assertf(model_file_error == os.General_Error.None, "error: %v", model_file_error)
 		}
 		for name in sort_keys(models^) {
 			/* NOTE: javascript bundlers are bad and don't understand export by name for types... */
@@ -181,8 +180,8 @@ main :: proc() {
 			//fmt.printfln("%v", file_to_write)
 			file_path := strings.join({OUT_DIR, "apis/", group, "Api", ".ts"}, "")
 			fmt.printfln("- %v", file_path)
-			error := os.write_entire_file(file_path, transmute([]u8)file_to_write)
-			fmt.assertf(error == os.General_Error.None, "error: %v", error)
+			api_file_error := os.write_entire_file(file_path, transmute([]u8)file_to_write)
+			fmt.assertf(api_file_error == os.General_Error.None, "error: %v", api_file_error)
 		}
 		for group in sort_keys(apis^) {
 			line_to_write := strings.join({"export * from './", group, "Api';\n"}, "")
