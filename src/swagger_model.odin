@@ -27,6 +27,7 @@ SwaggerModelProperty :: union {
 	SwaggerModelPropertyPrimitive,
 	SwaggerModelPropertyReference,
 	SwaggerModelPropertyDynamicArray,
+	SwaggerModelPropertyOneOf,
 	SwaggerModelPropertyAllOf,
 }
 SwaggerModelPropertyPrimitive :: struct {
@@ -41,6 +42,10 @@ SwaggerModelPropertyReference :: struct {
 SwaggerModelPropertyDynamicArray :: struct {
 	value:    ^SwaggerModelProperty,
 	nullable: bool,
+}
+SwaggerModelPropertyOneOf :: struct {
+	items:    []SwaggerModelProperty,
+	nullable: bool, // TODO: is this ever used?
 }
 SwaggerModelPropertyAllOf :: struct {
 	items:    []SwaggerModelProperty,
@@ -59,6 +64,17 @@ get_swagger_property :: proc(
 		last_slash := strings.last_index(ref_key, "/")
 		ref_name := strings.join({module_prefix, ref_key[last_slash + 1:]}, "")
 		return SwaggerModelPropertyReference{ref_name}
+	}
+	one_of, has_one_of := property["oneOf"].(json.Array)
+	if has_one_of {
+		items: [dynamic]SwaggerModelProperty
+		for item in one_of {
+			append(
+				&items,
+				get_swagger_property(item.(json.Object), module_prefix, _debug_name, loc = loc),
+			)
+		}
+		return SwaggerModelPropertyOneOf{items[:], nullable}
 	}
 	all_of, has_all_of := property["allOf"].(json.Array)
 	if has_all_of {
@@ -238,6 +254,10 @@ add_imports :: proc(
 				need_date_import^ = true
 			}
 		}
+	case SwaggerModelPropertyOneOf:
+		for v in p.items {
+			add_imports(acc, v, import_type, nil)
+		}
 	case SwaggerModelPropertyAllOf:
 		for v in p.items {
 			add_imports(acc, v, import_type, nil)
@@ -261,6 +281,7 @@ print_mapped_type :: proc(
 ) {
 	if global_args.gen_dates {
 		switch p in property {
+		case SwaggerModelPropertyOneOf:
 		case SwaggerModelPropertyAllOf:
 		case SwaggerModelPropertyDynamicArray:
 			builder := strings.builder_make_none()
@@ -377,6 +398,14 @@ get_typescript_type :: proc(
 		)
 		is_array = true
 		is_array_nullable = m.nullable
+	case SwaggerModelPropertyOneOf:
+		item_strings: [dynamic]string
+		for item in m.items {
+			item_type, _, _, _, _, _ := get_typescript_type(item)
+			append(&item_strings, item_type)
+		}
+		type = strings.join(item_strings[:], " | ")
+		nullable = m.nullable
 	case SwaggerModelPropertyAllOf:
 		item_strings: [dynamic]string
 		for item in m.items {
