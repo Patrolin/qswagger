@@ -47,9 +47,10 @@ SwaggerModelPropertyOneOf :: struct {
 	items:    []SwaggerModelProperty,
 	nullable: bool, // TODO: is this ever used?
 }
+// NOTE: SwaggerModelPropertyReference doesn't have nullable, so this is often used as a workaround
 SwaggerModelPropertyAllOf :: struct {
 	items:    []SwaggerModelProperty,
-	nullable: bool, // NOTE: SwaggerModelPropertyReference doesn't have nullable, so this is often used as a workaround
+	nullable: bool,
 }
 get_swagger_property :: proc(
 	property: json.Object,
