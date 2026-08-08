@@ -31,10 +31,15 @@ SwaggerModelProperty :: union {
 	SwaggerModelPropertyAllOf,
 }
 SwaggerModelPropertyPrimitive :: struct {
-	enum_:    []string,
-	type:     string,
-	format:   string,
-	nullable: bool,
+	// common
+	type:                       string,
+	format:                     string,
+	nullable:                   bool,
+	// enum
+	enum_:                      []string,
+	// object
+	properties:                 SwaggerModelStruct,
+	additional_properties_type: ^SwaggerModelPropertyPrimitive,
 }
 SwaggerModelPropertyReference :: struct {
 	name: string,
@@ -99,19 +104,45 @@ get_swagger_property :: proc(
 				loc = loc,
 			)
 			return SwaggerModelPropertyDynamicArray{array_value, nullable}
+		} else if type == "object" {
+			object_properties, object_properties_ok := property["properties"].(json.Object)
+			object_additional_properties, object_additional_properties_ok := property["additionalProperties"].(json.Object)
+			properties: SwaggerModelStruct
+			for key, object_property in object_properties {
+				properties[key] = get_swagger_property(
+					object_property.(json.Object),
+					module_prefix,
+					_debug_name,
+				)
+			}
+			additional_properties_type: ^SwaggerModelPropertyPrimitive
+			if object_additional_properties_ok {
+				additional_properties_type = new(SwaggerModelPropertyPrimitive)
+				additional_properties_type^ = get_swagger_property(
+					object_additional_properties,
+					module_prefix,
+					_debug_name,
+				).(SwaggerModelPropertyPrimitive)
+			}
+			return SwaggerModelPropertyPrimitive {
+				type = type,
+				format = json_get_string(property, "format"),
+				nullable = nullable,
+				properties = properties,
+				additional_properties_type = additional_properties_type,
+			}
 		} else {
 			return SwaggerModelPropertyPrimitive {
-				enum_ = json_to_string_array(property, "enum"),
+				type = type,
 				format = json_get_string(property, "format"),
-				type = json_get_string(property, "type"),
 				nullable = nullable,
+				enum_ = json_to_string_array(property, "enum"),
 			}
 		}
 	} else {
-		fmt.printfln("property: %v", property)
 		return SwaggerModelPropertyPrimitive {
-			format = json_get_string(property, "format"),
 			type = "any",
+			format = json_get_string(property, "format"),
 			nullable = nullable,
 		}
 	}
@@ -346,6 +377,7 @@ print_typescript_type :: proc(property: SwaggerModelProperty) -> string {
 }
 get_typescript_type :: proc(
 	struct_model: SwaggerModelProperty,
+	loc := #caller_location,
 ) -> (
 	type, format: string,
 	needs_brackets: bool,
@@ -377,16 +409,35 @@ get_typescript_type :: proc(
 						type = "string"
 					}
 				}
+			case "object":
+				{
+					properties := m.properties
+					additional_properties_type := m.additional_properties_type
+					nullOrEmpty := m.nullable ? " | null" : ""
+					if len(properties) == 0 {
+						if additional_properties_type == nil {
+							type = strings.concatenate({"Record<string, never>", nullOrEmpty})
+						} else {
+							value_type, _, _, _, _, _ := get_typescript_type(
+								additional_properties_type^,
+							)
+							type = strings.concatenate(
+								{"Record<string, ", value_type, ">", nullOrEmpty},
+							)
+						}
+					} else {
+						fmt.assertf(false, "TODO: allow mixed map+object types, %v", m)
+					}
+				}
 			case "any":
 				{
 					nullOrEmpty := m.nullable ? " | null" : ""
-					type = strings.join(
+					type = strings.concatenate(
 						{"string | number | boolean | any[] | Record<string, any>", nullOrEmpty},
-						"",
 					)
 				}
 			case:
-				fmt.assertf(false, "TODO: handle primitive types: %v", m)
+				fmt.assertf(false, "TODO: handle primitive types: %v", m, loc = loc)
 			}
 		}
 		format = m.format
