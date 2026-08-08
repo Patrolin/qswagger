@@ -108,12 +108,14 @@ get_swagger_property :: proc(
 			object_properties, object_properties_ok := property["properties"].(json.Object)
 			object_additional_properties, object_additional_properties_ok := property["additionalProperties"].(json.Object)
 			properties: SwaggerModelStruct
-			for key, object_property in object_properties {
-				properties[key] = get_swagger_property(
-					object_property.(json.Object),
-					module_prefix,
-					_debug_name,
-				)
+			if object_properties_ok {
+				for key, object_property in object_properties {
+					properties[key] = get_swagger_property(
+						object_property.(json.Object),
+						module_prefix,
+						_debug_name,
+					)
+				}
 			}
 			additional_properties_type: ^SwaggerModelPropertyPrimitive
 			if object_additional_properties_ok {
