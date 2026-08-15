@@ -350,7 +350,7 @@ print_typescript_key_type :: proc(key: string, property: SwaggerModelProperty) -
 	builder := strings.builder_make_none()
 	type, _, needs_brackets, nullable, is_array, is_array_nullable := get_typescript_type(property)
 	fmt.sbprintf(&builder, "%v", key)
-	has_question_mark_colon := nullable && !is_array
+	has_question_mark_colon := (nullable && !is_array) || is_array_nullable
 	fmt.sbprintf(&builder, has_question_mark_colon ? "?: " : ": ")
 	if needs_brackets && is_array {fmt.sbprint(&builder, "(")}
 	fmt.sbprint(&builder, type)
@@ -360,7 +360,6 @@ print_typescript_key_type :: proc(key: string, property: SwaggerModelProperty) -
 	}
 	if needs_brackets && is_array {fmt.sbprint(&builder, ")")}
 	if is_array {fmt.sbprint(&builder, "[]")}
-	if is_array_nullable {fmt.sbprint(&builder, " | undefined")}
 	return strings.to_string(builder)
 }
 print_typescript_type :: proc(property: SwaggerModelProperty) -> string {
